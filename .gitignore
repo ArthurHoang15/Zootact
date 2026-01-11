@@ -1,0 +1,260 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+IMPLEMENTATION_PLAN.md
+PROJECT_CONTEXT.md
+
+# ==============================================
+# 1. GLOBAL & OS FILES (Windows, macOS, Linux)
+# ==============================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# ==============================================
+# 2. IDE & EDITOR SETTINGS (VS Code, JetBrains, etc.)
+# ==============================================
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# [cite_start]JetBrains (IntelliJ, PyCharm, Rider...) [cite: 28]
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# [cite_start]Cursor & AI Tools (User specific) [cite: 28]
+.cursor/
+!.cursor/rules/
+.cursorrules
+ai-skills/
+.claude/
+.claude-flow/
+.swarm/
+memory/
+
+# ==============================================
+# 3. ROOT PROJECT FILES
+# ==============================================
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker
+docker-compose.override.yml
+postgres-data/
+redis-data/
+
+# ==============================================
+# 4. BACKEND (.NET 8)
+# Ref: VisualStudio.gitignore, Dotnet.gitignore
+# ==============================================
+backend/**/bin/
+backend/**/obj/
+backend/**/[Dd]ebug/
+backend/**/[Rr]elease/
+backend/**/x64/
+backend/**/x86/
+backend/**/[Aa][Rr][Mm]/
+backend/**/[Aa][Rr][Mm]64/
+backend/**/bld/
+backend/**/[Oo]bj/
+backend/**/[Ll]og/
+backend/**/[Ll]ogs/
+
+# Generated files
+backend/**/Properties/launchSettings.json
+backend/**/*.xml
+backend/**/*.xproj
+backend/**/*.userprefs
+
+# User specific settings
+backend/**/appsettings.Development.json
+backend/**/appsettings.Local.json
+# Note: Keep appsettings.json template
+
+# NuGet Packages
+backend/**/*.nupkg
+backend/**/*.snupkg
+
+# Code Coverage
+backend/**/coverage.json
+backend/**/coverage.xml
+backend/**/coverage.info
+backend/**/*.coverage
+backend/**/*.coveragexml
+
+# ==============================================
+# 5. FRONTEND (REACT + VITE + BUN)
+# Ref: Node.gitignore, Nextjs.gitignore
+# ==============================================
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Build Output
+frontend/dist/
+frontend/build/
+frontend/out/
+frontend/coverage/
+
+# Testing
+frontend/.nyc_output/
+
+# Cache
+frontend/.eslintcache
+frontend/.stylelintcache
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/.vite/
+
+# Environment
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Lockfiles (Force Bun usage by ignoring others)
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/pnpm-lock.yaml
+
+# ==============================================
+# 6. AI SERVICE (PYTHON)
+# Ref: Python.gitignore
+# ==============================================
+# Byte-compiled / optimized / DLL files
+ai-service/__pycache__/
+ai-service/**/*.py[cod]
+ai-service/**/*$py.class
+
+# C extensions
+ai-service/**/*.so
+
+# Distribution / packaging
+ai-service/build/
+ai-service/develop-eggs/
+ai-service/dist/
+ai-service/downloads/
+ai-service/eggs/
+ai-service/.eggs/
+ai-service/lib/
+ai-service/lib64/
+ai-service/parts/
+ai-service/sdist/
+ai-service/var/
+ai-service/wheels/
+ai-service/*.egg-info/
+ai-service/.installed.cfg
+ai-service/*.egg
+ai-service/MANIFEST
+
+# Unit test / coverage reports
+ai-service/htmlcov/
+ai-service/.tox/
+ai-service/.nox/
+ai-service/.coverage
+ai-service/.coverage.*
+ai-service/.cache
+ai-service/nosetests.xml
+ai-service/coverage.xml
+ai-service/*.cover
+ai-service/*.py.cover
+ai-service/.hypothesis/
+ai-service/.pytest_cache/
+
+# Jupyter Notebook
+ai-service/.ipynb_checkpoints
+
+# Environments
+ai-service/.env
+ai-service/.venv/
+ai-service/env/
+ai-service/venv/
+ai-service/ENV/
+ai-service/env.bak/
+ai-service/venv.bak/
+
+# Type checkers
+ai-service/.mypy_cache/
+ai-service/.dmypy.json
+ai-service/dmypy.json
+ai-service/.pyre/
+ai-service/.pytype/
+ai-service/.ruff_cache/
