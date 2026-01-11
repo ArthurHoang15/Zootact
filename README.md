@@ -54,26 +54,25 @@ AI Service: http://localhost:8000/docs
 
 Manual Setup (Chạy thủ công từng phần)
 1. Backend (.NET)
-Bash
-
 cd backend
 dotnet restore
 dotnet run
-2. Frontend (React + Bun)
-Bash
 
+2. Frontend (React + Bun)
 cd frontend
 bun install  
 bun run dev
-3. AI Service (Python)
-Bash
 
+3. AI Service (Python)
 cd ai-service
-python -m venv venv
-# Windows: venv\Scripts\activate
-# Mac/Linux: source venv/bin/activate
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
+# Kích hoạt môi trường (Windows)
+uv .venv/Scripts/activate
+# Rồi chạy
 uvicorn main:app --reload
+# HOẶC chạy tắt bằng uv (không cần activate thủ công)
+uv run uvicorn main:app --reload
 ```
 ## 📂 Project Structure
 ```Plaintext
