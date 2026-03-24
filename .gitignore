@@ -11,6 +11,7 @@
 !.yarn/versions
 IMPLEMENTATION_PLAN.md
 PROJECT_CONTEXT.md
+docs/**
 
 # ==============================================
 # 1. GLOBAL & OS FILES (Windows, macOS, Linux)
@@ -88,6 +89,7 @@ out/
 
 # [cite_start]Cursor & AI Tools (User specific) [cite: 28]
 .cursor/
+.agent/
 !.cursor/rules/
 .cursorrules
 ai-skills/
@@ -199,6 +201,12 @@ frontend/pnpm-lock.yaml
 # 6. AI SERVICE (PYTHON)
 # Ref: Python.gitignore
 # ==============================================
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
 # Byte-compiled / optimized / DLL files
 ai-service/__pycache__/
 ai-service/**/*.py[cod]
@@ -258,3 +266,6 @@ ai-service/dmypy.json
 ai-service/.pyre/
 ai-service/.pytype/
 ai-service/.ruff_cache/
+# Firebase Service Account Key
+backend/Zootact.API/Config/firebase-adminsdk.json
+

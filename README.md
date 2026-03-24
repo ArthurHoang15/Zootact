@@ -1,91 +1,33 @@
-# 🐾 Zootact - Animal Chess Online
+# Zootact
 
-![Status](https://img.shields.io/badge/Status-Development-orange?style=flat-square)
-![Stack](https://img.shields.io/badge/Stack-.NET_8_|_React_|_Bun_|_Python-blueviolet?style=flat-square)
-![Vibe](https://img.shields.io/badge/Vibe-Cute_&_Hardcore-green?style=flat-square)
+Zootact is a real-time Dou Shou Qi web app with a cute UI, Firebase auth, SignalR multiplayer, PostgreSQL persistence, Redis live state, and a Python AI service for Smart Replay and anti-cheat analysis.
 
-> **Zootact** (Dou Shou Qi) is a modern, real-time web game built with a philosophy: **"Friendly on the outside, Hardcore on the inside"**. Think of it as **Chess.com** meets **Duolingo/Fall Guys** aesthetic.
+## Stack
 
-## 🌟 Features (Tính năng nổi bật)
+- `backend/`: ASP.NET Core 8 API, SignalR hub, EF Core, Redis-backed live game state
+- `frontend/`: React + Vite + TypeScript + Zustand + i18n
+- `ai-service/`: FastAPI analysis and anti-cheat service
 
-* **🎨 Cute & Playful UI:** Giao diện thân thiện, vui nhộn với style "Forest/Candy".
-* **🌏 Bilingual Support:** Song ngữ **Anh / Việt** (i18n).
-* **⚡ Real-time Multiplayer:** Chơi online mượt mà với **SignalR** (độ trễ thấp).
-* **🏆 Competitive System:** Hệ thống xếp hạng **Forest Points (Elo)**, bảng xếp hạng thời gian thực.
-* **🧠 AI Smart Replay:** Phân tích ván đấu, chỉ ra lỗi sai (Oopsie) bằng **Python Engine**.
-* **📱 Mobile First:** Tối ưu hóa trải nghiệm Tap-to-Move trên điện thoại (Portrait mode).
+## Current Architecture
 
-## 🏗️ Tech Stack (Công nghệ)
+- Firebase is the only authentication system in v1.
+- PostgreSQL stores users, matches, moves, stats, and match analysis.
+- Redis stores active matches, active-player mappings, and disconnect timers.
+- SignalR path is `/game-hub`.
+- The frontend restores active matches via `GET /api/match/active` after auth bootstrap.
 
-Dự án sử dụng kiến trúc **Monorepo**:
+## Definition Of Done
 
-| Component | Technology | Description |
-| :--- | :--- | :--- |
-| **Backend** | **.NET 8 Web API** | Xử lý logic game, Auth, Real-time (SignalR). Code style: Primary Constructors. |
-| **Frontend** | **React + Vite + Bun** | Giao diện người dùng. Styling: Tailwind CSS. State: Zustand. |
-| **AI Service** | **Python (FastAPI)** | Engine phân tích ván đấu (Minimax/MCTS) và Bot detection. |
-| **Database** | **PostgreSQL** | Lưu trữ người dùng, lịch sử đấu. |
-| **Cache** | **Redis** | Lưu trạng thái bàn cờ (Game State) tốc độ cao. |
-| **Infra** | **Docker** | Đóng gói và triển khai toàn bộ hệ thống. |
+- Firebase login succeeds and `POST /api/auth/sync` returns the canonical `UserDto`
+- Authenticated users can join matchmaking from the home page
+- A matched player is routed into a live game and joins SignalR on `/game-hub`
+- Refresh during a game restores board, timers, and player identity from `GET /api/match/active`
+- Resignation, timeout, draw agreement, normal wins, and disconnect forfeits all finalize one persisted match result
+- Completed matches update Forest Points and user stats in PostgreSQL
+- Smart Replay and anti-cheat summaries are available from `GET /api/match/{matchId}/analysis`
+- `bun run build` passes for the frontend
+- `pytest` passes for `ai-service`
 
-## 🚀 Getting Started (Cài đặt)
+## Local Setup
 
-### Prerequisites (Yêu cầu)
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* [Bun](https://bun.sh/) (v1.1+)
-* .NET 8 SDK
-* Python 3.11+
-
-### Quick Start with Docker 🐳
-Cách nhanh nhất để chạy toàn bộ hệ thống (DB, Redis, API, Web):
-
-```bash
-# 1. Clone repo
-git clone [https://github.com/your-username/zootact.git](https://github.com/your-username/zootact.git)
-cd zootact
-
-# 2. Start services
-docker-compose up -d
-Frontend: http://localhost:5173
-
-Backend API: http://localhost:5000/swagger
-
-AI Service: http://localhost:8000/docs
-
-Manual Setup (Chạy thủ công từng phần)
-1. Backend (.NET)
-cd backend
-dotnet restore
-dotnet run
-
-2. Frontend (React + Bun)
-cd frontend
-bun install  
-bun run dev
-
-3. AI Service (Python)
-cd ai-service
-uv venv
-uv pip install -r requirements.txt
-# Kích hoạt môi trường (Windows)
-uv .venv/Scripts/activate
-# Rồi chạy
-uvicorn main:app --reload
-# HOẶC chạy tắt bằng uv (không cần activate thủ công)
-uv run uvicorn main:app --reload
-```
-## 📂 Project Structure
-```Plaintext
-Zootact/
-├── backend/       # ASP.NET Core Source
-├── frontend/      # React Source (Vite + Bun)
-├── ai-service/    # Python Source
-├── database/      # SQL Scripts
-├── ai-skills/     # [Local Only] AI Coding Rules
-└── docker-compose.yml
-```
-## 🤝 Contribution
-Dự án này là đồ án cá nhân. Mọi đóng góp vui lòng tạo Pull Request hoặc Issue.
-
-## 📄 License
-MIT License.
+See [docs/COMPLETE_SETUP.md](D:/Anh-Quan/Codes/Zootact/docs/COMPLETE_SETUP.md) for the full bring-up steps and required Firebase configuration.

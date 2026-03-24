@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+/* =====================================================
+   ZOOTACT "CUTE FOREST" DESIGN SYSTEM
+   Based on Duolingo/Fall Guys aesthetic
+   ===================================================== */
+
+/* Tailwind v4 CSS Variables Theme */
+@theme {
+  /* === Typography === */
+  --font-display: 'Coiny', cursive;
+  --font-body: 'Quicksand', sans-serif;
+
+  /* === Color Palette === */
+  /* Primary Colors */
+  --color-candy-green: #58CC02;
+  --color-candy-green-light: #7ED934;
+  --color-candy-green-dark: #46A302;
+  
+  /* Secondary Colors */
+  --color-sky-blue: #1CB0F6;
+  --color-sky-blue-light: #4DC4F9;
+  --color-sky-blue-dark: #0A8AD4;
+  
+  /* Accent Colors */
+  --color-carrot-orange: #FF9600;
+  --color-carrot-orange-light: #FFB340;
+  --color-carrot-orange-dark: #D97E00;
+  
+  /* Neutral/Background Colors */
+  --color-cream: #FFFBF0;
+  --color-cream-dark: #FFF5E0;
+  --color-forest-dark: #3C3C3C;
+  --color-forest-light: #6B6B6B;
+  
+  /* Game Colors - Blue Player */
+  --color-player-blue: #1E90FF;
+  --color-player-blue-light: #60AFFF;
+  --color-player-blue-dark: #0066CC;
+  
+  /* Game Colors - Red Player */
+  --color-player-red: #FF4D4D;
+  --color-player-red-light: #FF7A7A;
+  --color-player-red-dark: #CC0000;
+  
+  /* Terrain Colors */
+  --color-river: #4FC3F7;
+  --color-river-dark: #29B6F6;
+  --color-trap: #FFD54F;
+  --color-trap-dark: #FFCA28;
+  --color-den-blue: #90CAF9;
+  --color-den-red: #EF9A9A;
+  --color-land-light: #C8E6C9;
+  --color-land-dark: #A5D6A7;
+  
+  /* Shadows */
+  --shadow-cute: 0 4px 0 0 rgba(0, 0, 0, 0.15);
+  --shadow-cute-lg: 0 6px 0 0 rgba(0, 0, 0, 0.2);
+  --shadow-glow-green: 0 0 20px rgba(88, 204, 2, 0.4);
+  --shadow-glow-blue: 0 0 20px rgba(28, 176, 246, 0.4);
+  
+  /* Border Radius */
+  --radius-cute: 1rem;
+  --radius-cute-lg: 1.5rem;
+  --radius-cute-xl: 2rem;
+  --radius-full: 9999px;
+
+  /* Animations */
+  --animate-bounce-cute: bounce-cute 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  --animate-wiggle: wiggle 0.3s ease-in-out;
+  --animate-pop: pop 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  --animate-float: float 3s ease-in-out infinite;
+}
+
+/* === Custom Animations === */
+@keyframes bounce-cute {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-15px); }
+  50% { transform: translateY(-5px); }
+  70% { transform: translateY(-10px); }
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(88, 204, 2, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(88, 204, 2, 0.8); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* === Utility Classes === */
+@layer utilities {
+  /* 3D Press Button Effect */
+  .btn-3d {
+    position: relative;
+    border-bottom: 4px solid rgba(0, 0, 0, 0.2);
+    transition: all 0.1s ease;
+  }
+  
+  .btn-3d:hover {
+    transform: translateY(-2px);
+    border-bottom-width: 6px;
+  }
+  
+  .btn-3d:active {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+  }
+  
+  /* Cute hover wiggle */
+  .hover-wiggle:hover {
+    animation: wiggle 0.3s ease-in-out;
+  }
+  
+  /* Bounce on tap for mobile */
+  .tap-bounce:active {
+    animation: pop 0.2s ease;
+  }
+  
+  /* Floating animation for decorative elements */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  /* Valid move highlight */
+  .valid-move-glow {
+    animation: pulse-glow 1s ease-in-out infinite;
+  }
+  
+  /* Selected piece indicator */
+  .piece-selected {
+    box-shadow: 0 0 0 4px var(--color-candy-green), 0 0 20px rgba(88, 204, 2, 0.5);
+  }
+  
+  /* River wave effect */
+  .river-wave {
+    background: linear-gradient(
+      135deg,
+      var(--color-river) 0%,
+      var(--color-river-dark) 50%,
+      var(--color-river) 100%
+    );
+    background-size: 200% 200%;
+    animation: shimmer 3s ease-in-out infinite;
+  }
+  
+  /* Text gradient effect */
+  .text-gradient-cute {
+    background: linear-gradient(135deg, var(--color-candy-green), var(--color-sky-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Card hover lift */
+  .card-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* No scrollbar utility */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* === Base Styles === */
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-cream);
+    color: var(--color-forest-dark);
+    overflow-x: hidden;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+  
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Remove default button styles */
+  button {
+    font-family: inherit;
+  }
+  
+  /* Focus ring for accessibility */
+  *:focus-visible {
+    outline: 3px solid var(--color-candy-green);
+    outline-offset: 2px;
+    border-radius: var(--radius-cute);
+  }
+}
