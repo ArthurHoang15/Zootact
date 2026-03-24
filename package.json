@@ -1,0 +1,13 @@
+{
+  "name": "zootact-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:users": "bun run scripts/db-users.ts list",
+    "db:user:find": "bun run scripts/db-users.ts find",
+    "db:user:delete": "bun run scripts/db-users.ts delete"
+  },
+  "dependencies": {
+    "postgres": "^3.4.7"
+  }
+}

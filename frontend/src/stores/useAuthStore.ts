@@ -47,21 +47,55 @@ const initialState: AuthState = {
 
 let authStateUnsubscribe: (() => void) | null = null;
 let authStateRequestId = 0;
+let inflightUserToken: string | null = null;
+let inflightUserPromise: Promise<UserDto> | null = null;
 
-async function fetchCurrentUser(token: string): Promise<UserDto> {
-    const response = await fetch('/api/auth/me', {
-        method: 'GET',
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => window.setTimeout(resolve, ms));
+}
 
-    if (!response.ok) {
+async function requestCurrentUser(token: string): Promise<UserDto> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        const response = await fetch('/api/auth/me', {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.ok) {
+            return response.json();
+        }
+
         const error = await response.json().catch(() => null) as { message?: string; error?: string } | null;
-        throw new Error(error?.message || error?.error || 'Failed to load user from backend');
+        const message = error?.message || error?.error || 'Failed to load user from backend';
+        const isRetryable = response.status === 500 || response.status === 503;
+
+        if (!isRetryable || attempt === 3) {
+            throw new Error(message);
+        }
+
+        await delay(250 * attempt);
     }
 
-    return response.json();
+    throw new Error('Failed to load user from backend');
+}
+
+async function fetchCurrentUser(token: string): Promise<UserDto> {
+    if (inflightUserToken === token && inflightUserPromise) {
+        return inflightUserPromise;
+    }
+
+    inflightUserToken = token;
+    inflightUserPromise = requestCurrentUser(token)
+        .finally(() => {
+            if (inflightUserToken === token) {
+                inflightUserToken = null;
+                inflightUserPromise = null;
+            }
+        });
+
+    return inflightUserPromise;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>()(

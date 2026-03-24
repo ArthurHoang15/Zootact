@@ -20,6 +20,18 @@ public sealed class GameHub(
     GameEngine gameEngine,
     ILogger<GameHub> logger) : Hub
 {
+    public override async Task OnConnectedAsync()
+    {
+        var userId = GetUserId();
+        if (userId is not null)
+        {
+            await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
+            logger.LogInformation("User {UserId} connected to game hub with connection {ConnectionId}", userId, Context.ConnectionId);
+        }
+
+        await base.OnConnectedAsync();
+    }
+
     /// <summary>
     /// Joins a match room to receive real-time updates.
     /// </summary>
@@ -115,6 +127,7 @@ public sealed class GameHub(
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, GameHubGroups.Lobby(lobbyGuid));
+        await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
         logger.LogInformation("User {UserId} joined lobby {LobbyId}", userId, lobbyId);
     }
 

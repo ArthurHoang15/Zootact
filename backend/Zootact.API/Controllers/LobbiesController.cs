@@ -51,6 +51,26 @@ public sealed class LobbiesController(
         }
     }
 
+    [HttpGet("active")]
+    [ProducesResponseType(typeof(PrivateLobbyDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> GetActiveLobby()
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var lobby = await privateLobbyService.GetActiveLobbyAsync(userId.Value);
+        if (lobby is null)
+        {
+            return NoContent();
+        }
+
+        return Ok(await BuildLobbyDtoAsync(lobby, userId.Value));
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PrivateLobbyDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

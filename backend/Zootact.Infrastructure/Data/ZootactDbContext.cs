@@ -27,8 +27,8 @@ public sealed class ZootactDbContext(DbContextOptions<ZootactDbContext> options)
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.FirebaseUid).HasColumnName("firebase_uid").HasMaxLength(128).IsRequired();
             entity.Property(e => e.Username).HasColumnName("username").HasMaxLength(50);
-            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(255);
-            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(255);
+            entity.Property(e => e.Email).HasColumnName("email").HasMaxLength(512);
+            entity.Property(e => e.AvatarUrl).HasColumnName("avatar_url").HasMaxLength(2048);
             entity.Property(e => e.ForestPoints).HasColumnName("forest_points").HasDefaultValue(1200);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
             entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");

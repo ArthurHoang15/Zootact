@@ -29,6 +29,24 @@ public sealed class PrivateLobbyService(
         return lobby;
     }
 
+    public async Task<PrivateLobby?> GetActiveLobbyAsync(Guid userId)
+    {
+        var lobbyId = await privateLobbyRepository.GetPlayerActiveLobbyAsync(userId);
+        if (!lobbyId.HasValue)
+        {
+            return null;
+        }
+
+        var lobby = await privateLobbyRepository.GetLobbyAsync(lobbyId.Value);
+        if (lobby is not null)
+        {
+            return lobby;
+        }
+
+        await privateLobbyRepository.ClearPlayerActiveLobbyAsync(userId);
+        return null;
+    }
+
     public Task<PrivateLobby?> GetLobbyAsync(Guid lobbyId) => privateLobbyRepository.GetLobbyAsync(lobbyId);
 
     public async Task<PrivateLobby> JoinLobbyAsync(Guid lobbyId, Guid userId)

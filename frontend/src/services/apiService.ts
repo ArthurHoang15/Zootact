@@ -107,6 +107,19 @@ class ApiService {
         return this.handleResponse(response);
     }
 
+    async getActiveLobby(): Promise<PrivateLobbyDto | null> {
+        const response = await fetch(`${API_BASE}/lobbies/active`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+
+        if (response.status === 204) {
+            return null;
+        }
+
+        return this.handleResponse(response);
+    }
+
     async joinLobby(lobbyId: string): Promise<LobbyActionResponse> {
         const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/join`, {
             method: 'POST',

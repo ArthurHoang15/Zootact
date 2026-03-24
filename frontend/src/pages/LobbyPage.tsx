@@ -198,21 +198,21 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
 
     return (
         <div className="min-h-screen bg-cream">
-            <header className="relative overflow-hidden bg-gradient-to-br from-carrot-orange via-candy-green to-cream px-4 py-8">
-                <div className="mx-auto flex max-w-5xl items-start justify-between gap-4">
+            <header className="relative overflow-hidden bg-gradient-to-br from-carrot-orange via-candy-green to-cream px-4 py-6 sm:py-8">
+                <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-4">
                     <div>
                         <button className="text-sm font-bold text-white/90" onClick={() => void handleLeaveLobby()}>
                             {t('common.back')}
                         </button>
-                        <h1 className="mt-3 font-display text-5xl text-white">{t('lobby.title')}</h1>
-                        <p className="mt-2 text-white/90">{t('lobby.subtitle')}</p>
+                        <h1 className="mt-3 font-display text-4xl text-white sm:text-5xl">{t('lobby.title')}</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-white/90 sm:text-base">{t('lobby.subtitle')}</p>
                     </div>
                     <LanguageSwitcher />
                 </div>
             </header>
 
-            <main className="mx-auto max-w-5xl px-4 py-10">
-                <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+            <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] xl:items-start">
                     <section className="space-y-6">
                         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
                             <Card padding="lg" className="space-y-5">
@@ -221,7 +221,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                         <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">
                                             {t('matchmaking.selectMode')}
                                         </p>
-                                        <h2 className="mt-2 font-display text-3xl text-forest-dark">{lobby?.preset ?? '...'}</h2>
+                                        <h2 className="mt-2 font-display text-3xl text-forest-dark sm:text-4xl">{lobby?.preset ?? '...'}</h2>
                                     </div>
                                     <div className="rounded-full bg-cream px-4 py-2 text-sm font-bold text-forest-dark">
                                         ID: {lobbyId.slice(0, 8)}
@@ -235,22 +235,27 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                 )}
 
                                 {lobby?.countdown_active && (
-                                    <div className="rounded-3xl bg-carrot-orange/10 px-5 py-4 text-center">
+                                    <div className="rounded-3xl bg-carrot-orange/10 px-4 py-4 text-center sm:px-5">
                                         <p className="text-sm font-bold uppercase tracking-[0.12em] text-carrot-orange-dark">
                                             {t('lobby.countdownLabel')}
                                         </p>
-                                        <p className="mt-2 font-display text-5xl text-carrot-orange-dark">{countdownRemaining}</p>
+                                        <p className="mt-2 font-display text-4xl text-carrot-orange-dark sm:text-5xl">{countdownRemaining}</p>
                                         <p className="mt-2 text-sm text-forest-dark">{t('lobby.countdownHint')}</p>
                                     </div>
                                 )}
 
-                                <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-4 lg:grid-cols-2">
                                     <Card padding="md" className="bg-cream">
                                         <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{t('lobby.host')}</p>
-                                        <div className="mt-4 flex items-center gap-4">
-                                            <Avatar src={lobby?.host.avatar_url} alt={lobby?.host.username ?? 'Host'} avatarSize="lg" />
-                                            <div>
-                                                <p className="font-display text-2xl text-forest-dark">{lobby?.host.username ?? '...'}</p>
+                                        <div className="mt-4 flex items-center gap-4 sm:gap-5">
+                                            <Avatar
+                                                src={lobby?.host.avatar_url}
+                                                alt={lobby?.host.username ?? 'Host'}
+                                                avatarSize="lg"
+                                                className="shrink-0"
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="truncate font-display text-xl text-forest-dark sm:text-2xl">{lobby?.host.username ?? '...'}</p>
                                                 <p className="text-sm text-forest-light">{t('lobby.hostStatus')}</p>
                                             </div>
                                         </div>
@@ -259,10 +264,15 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                     <Card padding="md" className="bg-cream">
                                         <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{t('lobby.guest')}</p>
                                         {lobby?.guest ? (
-                                            <div className="mt-4 flex items-center gap-4">
-                                                <Avatar src={lobby.guest.avatar_url} alt={lobby.guest.username} avatarSize="lg" />
-                                                <div>
-                                                    <p className="font-display text-2xl text-forest-dark">{lobby.guest.username}</p>
+                                            <div className="mt-4 flex items-center gap-4 sm:gap-5">
+                                                <Avatar
+                                                    src={lobby.guest.avatar_url}
+                                                    alt={lobby.guest.username}
+                                                    avatarSize="lg"
+                                                    className="shrink-0"
+                                                />
+                                                <div className="min-w-0">
+                                                    <p className="truncate font-display text-xl text-forest-dark sm:text-2xl">{lobby.guest.username}</p>
                                                     <p className={`text-sm font-bold ${lobby.guest.is_ready ? 'text-candy-green-dark' : 'text-player-red-dark'}`}>
                                                         {lobby.guest.is_ready ? t('lobby.ready') : t('lobby.notReady')}
                                                     </p>
@@ -279,7 +289,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                         </motion.div>
                     </section>
 
-                    <motion.aside initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
+                    <motion.aside initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="xl:sticky xl:top-6">
                         <Card padding="lg" className="space-y-5">
                             <div>
                                 <h3 className="font-display text-2xl text-forest-dark">{t('lobby.inviteTitle')}</h3>

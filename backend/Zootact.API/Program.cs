@@ -1,9 +1,11 @@
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.EntityFrameworkCore;
 using Zootact.API.Hubs;
 using Zootact.API.Middleware;
 using Zootact.API.Services;
 using Zootact.Core.Interfaces;
+using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -55,6 +57,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+await ApplyDatabaseSchemaPatchesAsync(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -70,3 +74,57 @@ app.MapControllers();
 app.MapHub<GameHub>("/game-hub");
 
 app.Run();
+
+static async Task ApplyDatabaseSchemaPatchesAsync(WebApplication app)
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ZootactDbContext>();
+
+    await dbContext.Database.ExecuteSqlRawAsync("""
+        DO $$
+        DECLARE
+            current_email_length integer;
+            current_avatar_length integer;
+        BEGIN
+            SELECT character_maximum_length
+            INTO current_email_length
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'email';
+
+            SELECT character_maximum_length
+            INTO current_avatar_length
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'avatar_url';
+
+            IF COALESCE(current_email_length, 0) < 512 OR COALESCE(current_avatar_length, 0) < 2048 THEN
+                DROP VIEW IF EXISTS v_leaderboard;
+
+                ALTER TABLE users
+                    ALTER COLUMN email TYPE VARCHAR(512),
+                    ALTER COLUMN avatar_url TYPE VARCHAR(2048);
+
+                CREATE OR REPLACE VIEW v_leaderboard AS
+                SELECT
+                    u.id,
+                    u.username,
+                    u.avatar_url,
+                    u.forest_points,
+                    s.total_games,
+                    s.wins,
+                    s.losses,
+                    s.draws,
+                    CASE
+                        WHEN s.total_games > 0 THEN ROUND((s.wins::DECIMAL / s.total_games) * 100, 2)
+                        ELSE 0
+                    END AS win_rate,
+                    s.win_streak_best,
+                    s.win_streak_current
+                FROM users u
+                LEFT JOIN user_stats s ON u.id = s.user_id
+                WHERE u.is_banned = FALSE
+                ORDER BY u.forest_points DESC
+                LIMIT 100;
+            END IF;
+        END $$;
+        """);
+}

@@ -4,6 +4,10 @@ export function rememberPostAuthRedirect(hash: string): void {
     window.sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, hash);
 }
 
+export function peekPostAuthRedirect(): string | null {
+    return window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
+}
+
 export function consumePostAuthRedirect(): string | null {
     const redirectHash = window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
     if (redirectHash) {

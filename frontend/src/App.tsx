@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ForgotPasswordPage, GamePage, HomePage, LobbyPage, LoginPage, ProfilePage, RegisterPage } from '@/pages';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
-import { navigateAfterAuth, rememberPostAuthRedirect } from '@/utils';
+import { navigateAfterAuth, peekPostAuthRedirect, rememberPostAuthRedirect } from '@/utils';
 
 type RouteInfo =
     | { name: 'home' }
@@ -85,6 +85,21 @@ function App() {
     }, [isAuthenticated, route]);
 
     useEffect(() => {
+        if (!isAuthenticated) {
+            return;
+        }
+
+        const pendingRedirect = peekPostAuthRedirect();
+        if (!pendingRedirect) {
+            return;
+        }
+
+        if (route.name === 'login' || route.name === 'register' || route.name === 'forgot-password' || route.name === 'home') {
+            navigateAfterAuth();
+        }
+    }, [isAuthenticated, route.name]);
+
+    useEffect(() => {
         let disposed = false;
 
         async function bootstrapLiveSession() {
@@ -107,6 +122,16 @@ function App() {
                 if (route.name === 'game') {
                     resetGame();
                     window.location.hash = '#/';
+                    return;
+                }
+
+                if (route.name === 'home') {
+                    const activeLobby = await apiService.getActiveLobby();
+                    if (disposed || !activeLobby) {
+                        return;
+                    }
+
+                    window.location.hash = `#/lobby/${activeLobby.lobby_id}`;
                 }
                 return;
             }
