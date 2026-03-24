@@ -15,6 +15,7 @@ public sealed class MatchmakingService(
     IConnectionMultiplexer redis,
     ZootactDbContext dbContext,
     IGameStateRepository gameStateRepository,
+    IPrivateLobbyRepository privateLobbyRepository,
     ILogger<MatchmakingService> logger) : IMatchmakingService
 {
     private IDatabase Db => redis.GetDatabase();
@@ -47,6 +48,12 @@ public sealed class MatchmakingService(
 
         try
         {
+            var activeLobby = await privateLobbyRepository.GetPlayerActiveLobbyAsync(userId);
+            if (activeLobby is not null)
+            {
+                throw new InvalidOperationException("Leave your private lobby before joining matchmaking.");
+            }
+
             var activeMatch = await gameStateRepository.GetPlayerActiveMatchAsync(userId);
             if (activeMatch is not null)
             {

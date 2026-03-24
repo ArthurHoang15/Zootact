@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthLayout } from './AuthLayout';
 import { CuteInput, CuteButton } from '@/components/ui';
 import { useAuthStore } from '@/stores';
+import { navigateAfterAuth } from '@/utils';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -22,8 +23,8 @@ export function LoginPage() {
     e.preventDefault();
     try {
       await loginWithEmail(email, password);
-      window.location.hash = '#/'; // Go to home
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
@@ -31,8 +32,8 @@ export function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
-      window.location.hash = '#/';
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
@@ -45,7 +46,7 @@ export function LoginPage() {
     try {
        await sendLoginLink(email);
        setMagicLinkSent(true);
-    } catch(err) {
+    } catch {
        // Store handles error
     }
   };

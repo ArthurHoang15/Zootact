@@ -38,10 +38,12 @@ public static class DependencyInjection
         
         // Repositories
         services.AddScoped<IGameStateRepository, RedisGameStateRepository>();
+        services.AddScoped<IPrivateLobbyRepository, RedisPrivateLobbyRepository>();
         services.AddScoped<IMatchLifecycleService, MatchLifecycleService>();
         
         // Services (Firebase handles auth now, so no AuthService or EmailSender)
         services.AddScoped<IMatchmakingService, MatchmakingService>();
+        services.AddScoped<IPrivateLobbyService, PrivateLobbyService>();
         services.AddHttpClient<AiServiceClient>((sp, client) =>
         {
             var baseUrl = configuration["AiService:BaseUrl"] ?? "http://localhost:8001";
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddHostedService<MatchPersistenceService>();
         services.AddHostedService<DisconnectTimerService>();
         services.AddHostedService<GameTimeoutService>();
+        services.AddHostedService<PrivateLobbyCountdownService>();
         
         return services;
     }

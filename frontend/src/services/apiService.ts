@@ -1,5 +1,13 @@
 import { useAuthStore } from '@/stores';
-import type { ActiveMatchResponse, MatchAnalysisResponse, MatchmakingResponse, MyProfileDto } from '@/types';
+import type {
+    ActiveMatchResponse,
+    CreateLobbyRequest,
+    LobbyActionResponse,
+    MatchAnalysisResponse,
+    MatchmakingResponse,
+    MyProfileDto,
+    PrivateLobbyDto,
+} from '@/types';
 
 const API_BASE = '/api';
 
@@ -75,6 +83,66 @@ class ApiService {
     async getMatchAnalysis(matchId: string): Promise<MatchAnalysisResponse> {
         const response = await fetch(`${API_BASE}/match/${matchId}/analysis`, {
             method: 'GET',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    // === Private Lobby ===
+
+    async createLobby(payload: CreateLobbyRequest): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify(payload),
+        });
+        return this.handleResponse(response);
+    }
+
+    async getLobby(lobbyId: string): Promise<PrivateLobbyDto> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    async joinLobby(lobbyId: string): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/join`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    async leaveLobby(lobbyId: string): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/leave`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    async setLobbyReady(lobbyId: string, ready: boolean): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/ready`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+            body: JSON.stringify({ ready }),
+        });
+        return this.handleResponse(response);
+    }
+
+    async startLobby(lobbyId: string): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/start`, {
+            method: 'POST',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    async cancelLobbyStart(lobbyId: string): Promise<LobbyActionResponse> {
+        const response = await fetch(`${API_BASE}/lobbies/${lobbyId}/cancel-start`, {
+            method: 'POST',
             headers: this.getHeaders(),
         });
         return this.handleResponse(response);

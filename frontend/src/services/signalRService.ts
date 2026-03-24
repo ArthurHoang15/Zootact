@@ -2,13 +2,16 @@ import * as signalR from '@microsoft/signalr';
 import type {
     ChatMessageDto,
     GameEndedDto,
+    LobbyClosedDto,
+    LobbyCountdownStartedDto,
     MakeMoveRequest,
     MatchStartDto,
     MoveMadeDto,
     MoveResult,
+    PrivateLobbyDto,
     TimeSyncDto,
 } from '@/types';
-import { useGameStore } from '@/stores';
+import { useGameStore, useLobbyStore } from '@/stores';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -16,6 +19,7 @@ class SignalRService {
     private connection: signalR.HubConnection | null = null;
     private connectionState: ConnectionState = 'disconnected';
     private currentMatchId: string | null = null;
+    private currentLobbyId: string | null = null;
     private onStateChange?: (state: ConnectionState) => void;
     private connectPromise: Promise<boolean> | null = null;
 
@@ -82,6 +86,7 @@ class SignalRService {
             await this.connection.stop();
             this.connection = null;
             this.currentMatchId = null;
+            this.currentLobbyId = null;
         }
 
         this.setConnectionState('disconnected');
@@ -94,6 +99,32 @@ class SignalRService {
 
         await this.connection.invoke('JoinMatch', matchId);
         this.currentMatchId = matchId;
+    }
+
+    async joinLobby(lobbyId: string): Promise<void> {
+        if (!this.connection || this.connectionState !== 'connected') {
+            throw new Error('Not connected to SignalR hub');
+        }
+
+        await this.connection.invoke('JoinLobby', lobbyId);
+        this.currentLobbyId = lobbyId;
+    }
+
+    async leaveLobby(lobbyId?: string): Promise<void> {
+        if (!this.connection || this.connectionState !== 'connected') {
+            this.currentLobbyId = null;
+            return;
+        }
+
+        const targetLobbyId = lobbyId ?? this.currentLobbyId;
+        if (!targetLobbyId) {
+            return;
+        }
+
+        await this.connection.invoke('LeaveLobby', targetLobbyId);
+        if (this.currentLobbyId === targetLobbyId) {
+            this.currentLobbyId = null;
+        }
     }
 
     async makeMove(request: MakeMoveRequest): Promise<MoveResult> {
@@ -147,10 +178,13 @@ class SignalRService {
         }
 
         const gameStore = useGameStore.getState();
+        const lobbyStore = useLobbyStore.getState();
 
         this.connection.on('OnMatchStart', (data: MatchStartDto) => {
             gameStore.initMatch(data);
             gameStore.setConnected(true);
+            this.currentLobbyId = null;
+            useLobbyStore.getState().clearLobby();
             window.location.hash = '#/game';
         });
 
@@ -186,6 +220,25 @@ class SignalRService {
             gameStore.syncTime(data.blue_time_remaining_ms, data.red_time_remaining_ms);
         });
 
+        this.connection.on('OnLobbyUpdated', (data: PrivateLobbyDto) => {
+            lobbyStore.applyLobbyUpdate(data);
+        });
+
+        this.connection.on('OnLobbyCountdownStarted', (data: LobbyCountdownStartedDto) => {
+            lobbyStore.applyCountdownStarted(data);
+        });
+
+        this.connection.on('OnLobbyCountdownCanceled', (data: PrivateLobbyDto) => {
+            lobbyStore.applyLobbyUpdate(data);
+        });
+
+        this.connection.on('OnLobbyClosed', (data: LobbyClosedDto) => {
+            if (this.currentLobbyId === data.lobby_id) {
+                this.currentLobbyId = null;
+            }
+            lobbyStore.setLobbyClosed(data);
+        });
+
         this.connection.onreconnecting(() => {
             this.setConnectionState('reconnecting');
             gameStore.setConnected(false);
@@ -196,6 +249,9 @@ class SignalRService {
             gameStore.setConnected(true);
             if (this.currentMatchId) {
                 void this.joinMatch(this.currentMatchId);
+            }
+            if (this.currentLobbyId) {
+                void this.joinLobby(this.currentLobbyId);
             }
         });
 

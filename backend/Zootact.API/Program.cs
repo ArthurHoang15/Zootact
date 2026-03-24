@@ -34,6 +34,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGameLogic();
 builder.Services.AddScoped<IMatchNotificationService, SignalRMatchNotificationService>();
+builder.Services.AddScoped<IPrivateLobbyNotificationService, SignalRPrivateLobbyNotificationService>();
 
 builder.Services.AddSignalR()
     .AddStackExchangeRedis(redisConnection, options =>

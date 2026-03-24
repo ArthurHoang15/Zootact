@@ -6,12 +6,20 @@ import { apiService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import type { TimeControlPreset } from '@/types';
 
+const presets: [TimeControlPreset, string, string][] = [
+    ['Blitz', 'Blitz', 'matchmaking.blitz'],
+    ['Rapid', 'Rapid', 'matchmaking.rapid'],
+    ['Classical', 'Classical', 'matchmaking.classical'],
+];
+
 export function HomePage() {
     const { t } = useTranslation();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const hydrateActiveMatch = useGameStore(state => state.hydrateActiveMatch);
+    const [showPrivatePicker, setShowPrivatePicker] = useState(false);
+    const [isCreatingLobby, setIsCreatingLobby] = useState(false);
     const [queueState, setQueueState] = useState<{ searching: boolean; timeControl: TimeControlPreset | null; position: number | null }>({
         searching: false,
         timeControl: null,
@@ -74,6 +82,28 @@ export function HomePage() {
         setQueueState({ searching: false, timeControl: null, position: null });
     }
 
+    async function handleCreateLobby(timeControl: TimeControlPreset) {
+        if (!isAuthenticated) {
+            window.location.hash = '#/login';
+            return;
+        }
+
+        setIsCreatingLobby(true);
+
+        try {
+            const response = await apiService.createLobby({ time_control: timeControl });
+            if (response.lobby) {
+                setShowPrivatePicker(false);
+                window.location.hash = `#/lobby/${response.lobby.lobby_id}`;
+            }
+        } catch (error) {
+            console.error('Failed to create lobby', error);
+            alert(error instanceof Error ? error.message : t('common.error'));
+        } finally {
+            setIsCreatingLobby(false);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-cream">
             <header className="relative overflow-hidden bg-gradient-to-b from-candy-green via-candy-green-light to-cream px-4 py-8">
@@ -112,15 +142,10 @@ export function HomePage() {
 
             <main className="mx-auto max-w-5xl px-4 py-12">
                 <section className="grid gap-6 md:grid-cols-3">
-                    {([
-                        ['Blitz', '⚡', t('matchmaking.blitz')],
-                        ['Rapid', '🌿', t('matchmaking.rapid')],
-                        ['Classical', '🦉', t('matchmaking.classical')],
-                    ] as [TimeControlPreset, string, string][]).map(([preset, emoji, label]) => (
+                    {presets.map(([preset, title, translationKey]) => (
                         <Card key={preset} hover padding="lg" className="text-center">
-                            <div className="mb-3 text-5xl">{emoji}</div>
-                            <h2 className="font-display text-2xl text-forest-dark">{preset}</h2>
-                            <p className="mb-4 mt-2 text-sm text-forest-light">{label}</p>
+                            <h2 className="font-display text-2xl text-forest-dark">{title}</h2>
+                            <p className="mb-4 mt-2 text-sm text-forest-light">{t(translationKey)}</p>
                             <CuteButton
                                 fullWidth
                                 variant={queueState.timeControl === preset ? 'accent' : 'primary'}
@@ -132,6 +157,75 @@ export function HomePage() {
                             </CuteButton>
                         </Card>
                     ))}
+                </section>
+
+                <section className="mt-8">
+                    <Card padding="lg" className="overflow-hidden bg-gradient-to-r from-white to-cream-dark">
+                        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="max-w-2xl">
+                                <p className="text-sm font-bold uppercase tracking-[0.12em] text-carrot-orange-dark">
+                                    {t('home.playWithFriend')}
+                                </p>
+                                <h2 className="mt-2 font-display text-4xl text-forest-dark">{t('lobby.homeTitle')}</h2>
+                                <p className="mt-3 text-forest-light">{t('lobby.homeSubtitle')}</p>
+                            </div>
+                            <CuteButton
+                                size="lg"
+                                variant="accent"
+                                onClick={() => {
+                                    if (!isAuthenticated) {
+                                        window.location.hash = '#/login';
+                                        return;
+                                    }
+
+                                    setShowPrivatePicker(true);
+                                }}
+                            >
+                                {t('home.playWithFriend')}
+                            </CuteButton>
+                        </div>
+
+                        {showPrivatePicker && (
+                            <motion.div
+                                className="mt-6 rounded-3xl bg-cream p-5"
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="font-display text-2xl text-forest-dark">{t('lobby.pickPreset')}</h3>
+                                        <p className="mt-1 text-sm text-forest-light">{t('lobby.pickPresetHint')}</p>
+                                    </div>
+                                    <CuteButton
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowPrivatePicker(false)}
+                                        disabled={isCreatingLobby}
+                                    >
+                                        {t('common.cancel')}
+                                    </CuteButton>
+                                </div>
+
+                                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                                    {presets.map(([preset, title, translationKey]) => (
+                                        <Card key={preset} padding="md" className="bg-white text-center">
+                                            <h4 className="font-display text-2xl text-forest-dark">{title}</h4>
+                                            <p className="mt-2 text-sm text-forest-light">{t(translationKey)}</p>
+                                            <CuteButton
+                                                className="mt-4"
+                                                fullWidth
+                                                variant="secondary"
+                                                onClick={() => void handleCreateLobby(preset)}
+                                                isLoading={isCreatingLobby}
+                                            >
+                                                {t('lobby.createRoom')}
+                                            </CuteButton>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </Card>
                 </section>
 
                 {queueState.searching && (

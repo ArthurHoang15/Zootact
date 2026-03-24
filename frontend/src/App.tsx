@@ -1,13 +1,48 @@
 import { useEffect, useState } from 'react';
-import { ForgotPasswordPage, GamePage, HomePage, LoginPage, ProfilePage, RegisterPage } from '@/pages';
+import { ForgotPasswordPage, GamePage, HomePage, LobbyPage, LoginPage, ProfilePage, RegisterPage } from '@/pages';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
+import { navigateAfterAuth, rememberPostAuthRedirect } from '@/utils';
+
+type RouteInfo =
+    | { name: 'home' }
+    | { name: 'game' }
+    | { name: 'login' }
+    | { name: 'register' }
+    | { name: 'forgot-password' }
+    | { name: 'profile' }
+    | { name: 'lobby'; lobbyId: string };
+
+function parseHashRoute(hash: string): RouteInfo {
+    const normalizedHash = hash || '#/';
+
+    if (normalizedHash.startsWith('#/lobby/')) {
+        const lobbyId = normalizedHash.slice('#/lobby/'.length);
+        return { name: 'lobby', lobbyId };
+    }
+
+    switch (normalizedHash) {
+        case '#/game':
+            return { name: 'game' };
+        case '#/login':
+            return { name: 'login' };
+        case '#/register':
+            return { name: 'register' };
+        case '#/forgot-password':
+            return { name: 'forgot-password' };
+        case '#/profile':
+            return { name: 'profile' };
+        case '#/':
+        default:
+            return { name: 'home' };
+    }
+}
 
 function useHashRouter() {
-    const [route, setRoute] = useState(window.location.hash || '#/');
+    const [route, setRoute] = useState<RouteInfo>(() => parseHashRoute(window.location.hash || '#/'));
 
     useEffect(() => {
-        const handleHashChange = () => setRoute(window.location.hash || '#/');
+        const handleHashChange = () => setRoute(parseHashRoute(window.location.hash || '#/'));
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
@@ -34,15 +69,20 @@ function App() {
             const email = window.localStorage.getItem('emailForSignIn');
             if (email) {
                 void completeLoginWithLink(email, window.location.href)
-                    .then(() => {
-                        window.location.hash = '#/';
-                    })
+                    .then(() => navigateAfterAuth())
                     .catch(error => {
                         console.error('Email link sign-in failed', error);
                     });
             }
         }
     }, [completeLoginWithLink]);
+
+    useEffect(() => {
+        if (route.name === 'lobby' && !isAuthenticated) {
+            rememberPostAuthRedirect(`#/lobby/${route.lobbyId}`);
+            window.location.hash = '#/login';
+        }
+    }, [isAuthenticated, route]);
 
     useEffect(() => {
         let disposed = false;
@@ -64,7 +104,7 @@ function App() {
             }
 
             if (!activeMatch) {
-                if (route === '#/game') {
+                if (route.name === 'game') {
                     resetGame();
                     window.location.hash = '#/';
                 }
@@ -92,18 +132,20 @@ function App() {
         });
     }, [isAuthenticated, matchId]);
 
-    switch (route) {
-        case '#/game':
+    switch (route.name) {
+        case 'game':
             return <GamePage />;
-        case '#/login':
+        case 'login':
             return <LoginPage />;
-        case '#/register':
+        case 'register':
             return <RegisterPage />;
-        case '#/forgot-password':
+        case 'forgot-password':
             return <ForgotPasswordPage />;
-        case '#/profile':
+        case 'profile':
             return <ProfilePage />;
-        case '#/':
+        case 'lobby':
+            return <LobbyPage lobbyId={route.lobbyId} />;
+        case 'home':
         default:
             return <HomePage />;
     }

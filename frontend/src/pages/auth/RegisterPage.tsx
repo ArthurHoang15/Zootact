@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthLayout } from './AuthLayout';
 import { CuteInput, CuteButton } from '@/components/ui';
 import { useAuthStore } from '@/stores';
+import { navigateAfterAuth } from '@/utils';
 
 export function RegisterPage() {
   const { t } = useTranslation();
@@ -36,8 +37,8 @@ export function RegisterPage() {
 
     try {
       await registerWithEmail(formData.email, formData.password, formData.username);
-      window.location.hash = '#/';
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
