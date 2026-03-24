@@ -155,6 +155,7 @@ public sealed class PrivateLobbyServiceTests
         Assert.Null(await fixture.PrivateLobbyRepository.GetPlayerActiveLobbyAsync(fixture.GuestId));
         Assert.NotNull(await fixture.GameStateRepository.GetGameStateAsync(matchId!.Value));
         Assert.Contains(matchId.Value, fixture.MatchNotifications.StartedMatches);
+        Assert.Equal(MatchMode.Friendly, fixture.MatchmakingService.CreatedMatchTypes[matchId.Value]);
     }
 
     [Fact]
@@ -167,6 +168,19 @@ public sealed class PrivateLobbyServiceTests
             fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz));
 
         Assert.Equal("You are already in an active match.", error.Message);
+    }
+
+    [Fact]
+    public async Task CreateLobby_ReleasesExistingLobbyBeforeCreatingNewOne()
+    {
+        var fixture = new PrivateLobbyFixture();
+        var firstLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+
+        var secondLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Rapid);
+
+        Assert.NotEqual(firstLobby.LobbyId, secondLobby.LobbyId);
+        Assert.Null(await fixture.PrivateLobbyRepository.GetLobbyAsync(firstLobby.LobbyId));
+        Assert.Equal(secondLobby.LobbyId, await fixture.PrivateLobbyRepository.GetPlayerActiveLobbyAsync(fixture.HostId));
     }
 
     private sealed class PrivateLobbyFixture
@@ -302,6 +316,7 @@ public sealed class PrivateLobbyServiceTests
     private sealed class FakeMatchmakingService(InMemoryGameStateRepository gameStateRepository) : IMatchmakingService
     {
         public List<Guid> QueueLeaves { get; } = [];
+        public Dictionary<Guid, MatchMode> CreatedMatchTypes { get; } = [];
 
         public Task<Guid?> JoinQueueAsync(Guid userId, TimeControlPreset preset) => Task.FromResult<Guid?>(null);
 
@@ -313,13 +328,14 @@ public sealed class PrivateLobbyServiceTests
 
         public Task<int> GetQueuePositionAsync(Guid userId, TimeControlPreset preset) => Task.FromResult(0);
 
-        public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset)
+        public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
         {
             var matchId = Guid.NewGuid();
             var state = GameState.Create(matchId, bluePlayerId, redPlayerId, preset);
             await gameStateRepository.SaveGameStateAsync(state);
             await gameStateRepository.SetPlayerActiveMatchAsync(bluePlayerId, matchId);
             await gameStateRepository.SetPlayerActiveMatchAsync(redPlayerId, matchId);
+            CreatedMatchTypes[matchId] = matchMode;
             return matchId;
         }
     }

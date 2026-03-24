@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Zootact.Core.Domain;
 using Zootact.Core.DTOs;
 using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure.Data.Entities;
@@ -223,6 +224,7 @@ public class AuthController(
                 var opponent = isBlue ? match.RedPlayer : match.BluePlayer;
                 var eloBefore = isBlue ? match.BlueEloBefore : match.RedEloBefore;
                 var eloAfter = isBlue ? (match.BlueEloAfter ?? match.BlueEloBefore) : (match.RedEloAfter ?? match.RedEloBefore);
+                var matchMode = MatchTypeMetadata.Parse(match.TimeControl);
                 var outcome = match.WinnerId == null
                     ? "Draw"
                     : match.WinnerId == dbUser.Id
@@ -232,13 +234,14 @@ public class AuthController(
                 return new RecentProfileMatchDto
                 {
                     MatchId = match.Id.ToString(),
-                    TimeControl = match.TimeControl,
+                    MatchType = matchMode.ToString(),
+                    TimeControl = MatchTypeMetadata.GetDisplayTimeControl(match.TimeControl),
                     Outcome = outcome,
                     ResultReason = match.ResultReason ?? "Unknown",
                     OpponentUsername = opponent.Username,
                     OpponentAvatarUrl = opponent.AvatarUrl,
                     EndedAt = match.EndedAt,
-                    EloChange = eloAfter - eloBefore
+                    EloChange = matchMode == MatchMode.Friendly ? 0 : eloAfter - eloBefore
                 };
             }).ToList()
         };

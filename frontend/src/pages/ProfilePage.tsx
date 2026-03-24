@@ -66,6 +66,12 @@ function outcomeClasses(outcome: RecentProfileMatchDto['outcome']) {
     }
 }
 
+function matchTypeClasses(matchType: RecentProfileMatchDto['match_type']) {
+    return matchType === 'Friendly'
+        ? 'bg-carrot-orange/15 text-carrot-orange-dark'
+        : 'bg-forest-light/10 text-forest-dark';
+}
+
 export function ProfilePage() {
     const { t } = useTranslation();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
@@ -290,16 +296,29 @@ export function ProfilePage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${outcomeClasses(match.outcome)}`}>
-                                                    {t(`profile.outcome${match.outcome}`)}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${matchTypeClasses(match.match_type)}`}>
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.friendlyMatch', 'Friendly')
+                                                            : t('profile.ratedMatch', 'Rated')}
+                                                    </span>
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${outcomeClasses(match.outcome)}`}>
+                                                        {t(`profile.outcome${match.outcome}`)}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                                                 <div className="rounded-2xl bg-white px-3 py-2">
-                                                    <p className="text-forest-light">{t('profile.eloChange')}</p>
-                                                    <p className={`mt-1 font-bold ${match.elo_change >= 0 ? 'text-candy-green-dark' : 'text-player-red-dark'}`}>
-                                                        {match.elo_change >= 0 ? '+' : ''}{match.elo_change}
+                                                    <p className="text-forest-light">
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.friendlyEloLabel', 'Elo impact')
+                                                            : t('profile.eloChange')}
+                                                    </p>
+                                                    <p className={`mt-1 font-bold ${match.match_type === 'Friendly' || match.elo_change >= 0 ? 'text-candy-green-dark' : 'text-player-red-dark'}`}>
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.noEloChange', 'No Elo change')
+                                                            : `${match.elo_change >= 0 ? '+' : ''}${match.elo_change}`}
                                                     </p>
                                                 </div>
                                                 <div className="rounded-2xl bg-white px-3 py-2">

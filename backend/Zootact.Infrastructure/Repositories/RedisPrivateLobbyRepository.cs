@@ -1,4 +1,3 @@
-using System.Text.Json;
 using StackExchange.Redis;
 using Zootact.Core.Domain;
 using Zootact.Core.Interfaces;
@@ -8,7 +7,6 @@ namespace Zootact.Infrastructure.Repositories;
 public sealed class RedisPrivateLobbyRepository(IConnectionMultiplexer redis) : IPrivateLobbyRepository
 {
     private IDatabase Db => redis.GetDatabase();
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan LobbyTtl = TimeSpan.FromHours(6);
 
     private static string LobbyKey(Guid lobbyId) => $"lobby:{lobbyId}";
@@ -79,9 +77,9 @@ public sealed class RedisPrivateLobbyRepository(IConnectionMultiplexer redis) : 
             new HashEntry("host_user_id", lobby.HostUserId.ToString()),
             new HashEntry("guest_user_id", lobby.GuestUserId?.ToString() ?? string.Empty),
             new HashEntry("preset", lobby.Preset.ToString()),
-            new HashEntry("host_ready", lobby.HostReady),
-            new HashEntry("guest_ready", lobby.GuestReady),
-            new HashEntry("countdown_active", lobby.CountdownActive),
+            new HashEntry("host_ready", SerializeBoolean(lobby.HostReady)),
+            new HashEntry("guest_ready", SerializeBoolean(lobby.GuestReady)),
+            new HashEntry("countdown_active", SerializeBoolean(lobby.CountdownActive)),
             new HashEntry("countdown_end_at", lobby.CountdownEndAt?.ToString("O") ?? string.Empty),
             new HashEntry("created_at", lobby.CreatedAt.ToString("O")),
             new HashEntry("updated_at", lobby.UpdatedAt.ToString("O"))
@@ -96,12 +94,24 @@ public sealed class RedisPrivateLobbyRepository(IConnectionMultiplexer redis) : 
             HostUserId = Guid.Parse(dict["host_user_id"]),
             GuestUserId = Guid.TryParse(dict["guest_user_id"], out var guestUserId) ? guestUserId : null,
             Preset = Enum.Parse<TimeControlPreset>(dict["preset"]),
-            HostReady = bool.Parse(dict["host_ready"]),
-            GuestReady = bool.Parse(dict["guest_ready"]),
-            CountdownActive = bool.Parse(dict["countdown_active"]),
+            HostReady = ParseBoolean(dict["host_ready"]),
+            GuestReady = ParseBoolean(dict["guest_ready"]),
+            CountdownActive = ParseBoolean(dict["countdown_active"]),
             CountdownEndAt = DateTimeOffset.TryParse(dict["countdown_end_at"], out var countdownEndAt) ? countdownEndAt : null,
             CreatedAt = DateTimeOffset.Parse(dict["created_at"]),
             UpdatedAt = DateTimeOffset.Parse(dict["updated_at"])
+        };
+    }
+
+    private static string SerializeBoolean(bool value) => value ? "true" : "false";
+
+    private static bool ParseBoolean(string value)
+    {
+        return value switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => bool.Parse(value)
         };
     }
 }

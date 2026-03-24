@@ -61,7 +61,7 @@ function App() {
     const matchId = useGameStore(state => state.matchId);
 
     useEffect(() => {
-        initializeAuth();
+        return initializeAuth();
     }, [initializeAuth]);
 
     useEffect(() => {

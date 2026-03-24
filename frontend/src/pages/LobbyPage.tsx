@@ -130,12 +130,19 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
 
         try {
             await apiService.leaveLobby(lobbyId);
-            await signalRService.leaveLobby(lobbyId);
-            clearLobby();
-            window.location.hash = '#/';
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : t('common.error'));
+            setPendingAction(null);
+            return;
+        }
+
+        try {
+            await signalRService.leaveLobby(lobbyId);
+        } catch (err) {
+            console.warn('Failed to leave lobby group', err);
         } finally {
+            clearLobby();
+            window.location.hash = '#/';
             setPendingAction(null);
         }
     }
@@ -194,7 +201,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
             <header className="relative overflow-hidden bg-gradient-to-br from-carrot-orange via-candy-green to-cream px-4 py-8">
                 <div className="mx-auto flex max-w-5xl items-start justify-between gap-4">
                     <div>
-                        <button className="text-sm font-bold text-white/90" onClick={() => { window.location.hash = '#/'; }}>
+                        <button className="text-sm font-bold text-white/90" onClick={() => void handleLeaveLobby()}>
                             {t('common.back')}
                         </button>
                         <h1 className="mt-3 font-display text-5xl text-white">{t('lobby.title')}</h1>

@@ -26,5 +26,5 @@ public interface IMatchmakingService
     /// <summary>
     /// Creates a new match between two players.
     /// </summary>
-    Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset);
+    Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated);
 }

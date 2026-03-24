@@ -34,7 +34,7 @@ interface AuthActions {
     logout: () => Promise<void>;
     setLoading: (loading: boolean) => void;
     setUser: (user: UserDto | null) => void;
-    initializeAuth: () => void;
+    initializeAuth: () => () => void;
 }
 
 const initialState: AuthState = {
@@ -44,6 +44,25 @@ const initialState: AuthState = {
     isLoading: false,
     error: null,
 };
+
+let authStateUnsubscribe: (() => void) | null = null;
+let authStateRequestId = 0;
+
+async function fetchCurrentUser(token: string): Promise<UserDto> {
+    const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+        throw new Error(error?.message || error?.error || 'Failed to load user from backend');
+    }
+
+    return response.json();
+}
 
 export const useAuthStore = create<AuthState & AuthActions>()(
     devtools(
@@ -58,18 +77,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     try {
                         const result = await signInWithEmailAndPassword(auth, email, password);
                         const token = await result.user.getIdToken();
-
-                        // Sync with backend
-                        const response = await fetch('/api/auth/sync', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-
-                        if (!response.ok) throw new Error('Failed to sync user with backend');
-
-                        const data = await response.json();
-                        // Backend sync should return { user: UserDto }
-                        set({ firebaseToken: token, user: data.user, isAuthenticated: true });
+                        const user = await fetchCurrentUser(token);
+                        set({ firebaseToken: token, user, isAuthenticated: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -84,16 +93,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const result = await createUserWithEmailAndPassword(auth, email, password);
                         await updateProfile(result.user, { displayName: username });
                         const token = await result.user.getIdToken();
-
-                        const response = await fetch('/api/auth/sync', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-
-                        if (!response.ok) throw new Error('Failed to sync user with backend');
-
-                        const data = await response.json();
-                        set({ firebaseToken: token, user: data.user, isAuthenticated: true });
+                        const user = await fetchCurrentUser(token);
+                        set({ firebaseToken: token, user, isAuthenticated: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -108,16 +109,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const provider = new GoogleAuthProvider();
                         const result = await signInWithPopup(auth, provider);
                         const token = await result.user.getIdToken();
-
-                        const response = await fetch('/api/auth/sync', {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-
-                        if (!response.ok) throw new Error('Failed to sync user with backend');
-
-                        const data = await response.json();
-                        set({ firebaseToken: token, user: data.user, isAuthenticated: true });
+                        const user = await fetchCurrentUser(token);
+                        set({ firebaseToken: token, user, isAuthenticated: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -150,16 +143,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         if (isSignInWithEmailLink(auth, href)) {
                             const result = await signInWithEmailLink(auth, email, href);
                             const token = await result.user.getIdToken();
-
-                            const response = await fetch('/api/auth/sync', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-                            if (!response.ok) throw new Error('Failed to sync user with backend');
-                            const data = await response.json();
+                            const user = await fetchCurrentUser(token);
 
                             window.localStorage.removeItem('emailForSignIn');
-                            set({ firebaseToken: token, user: data.user, isAuthenticated: true });
+                            set({ firebaseToken: token, user, isAuthenticated: true });
                         }
                     } catch (err: any) {
                         set({ error: err.message });
@@ -183,56 +170,53 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                 setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
 
                 initializeAuth: () => {
-                    onIdTokenChanged(auth, async (firebaseUser) => {
+                    authStateUnsubscribe?.();
+
+                    authStateUnsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
+                        const requestId = ++authStateRequestId;
+
                         if (!firebaseUser) {
+                            if (requestId !== authStateRequestId) {
+                                return;
+                            }
+
                             set({ ...initialState });
                             return;
                         }
 
+                        set({ isLoading: true, error: null });
+
                         try {
                             const token = await firebaseUser.getIdToken();
+                            const user = await fetchCurrentUser(token);
 
-                            const response = await fetch('/api/auth/me', {
-                                method: 'GET',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-
-                            if (response.ok) {
-                                const user = await response.json();
-                                set({
-                                    firebaseToken: token,
-                                    user,
-                                    isAuthenticated: true,
-                                    isLoading: false,
-                                    error: null,
-                                });
+                            if (requestId !== authStateRequestId) {
                                 return;
                             }
 
-                            const syncResponse = await fetch('/api/auth/sync', {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-
-                            if (!syncResponse.ok) {
-                                throw new Error('Failed to sync user with backend');
-                            }
-
-                            const data = await syncResponse.json();
                             set({
                                 firebaseToken: token,
-                                user: data.user,
+                                user,
                                 isAuthenticated: true,
                                 isLoading: false,
                                 error: null,
                             });
                         } catch (err: any) {
+                            if (requestId !== authStateRequestId) {
+                                return;
+                            }
+
                             set({
                                 ...initialState,
                                 error: err.message,
                             });
                         }
                     });
+
+                    return () => {
+                        authStateUnsubscribe?.();
+                        authStateUnsubscribe = null;
+                    };
                 },
 
             }),

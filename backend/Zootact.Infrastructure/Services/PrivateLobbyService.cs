@@ -16,13 +16,8 @@ public sealed class PrivateLobbyService(
 
     public async Task<PrivateLobby> CreateLobbyAsync(Guid userId, TimeControlPreset preset)
     {
-        await EnsureUserCanUsePrivateLobbyAsync(userId);
-
-        var existingLobbyId = await privateLobbyRepository.GetPlayerActiveLobbyAsync(userId);
-        if (existingLobbyId.HasValue)
-        {
-            throw new InvalidOperationException("You are already in a private lobby.");
-        }
+        await EnsureUserCanCreatePrivateLobbyAsync(userId);
+        await ReleaseExistingLobbyAsync(userId);
 
         await matchmakingService.LeaveQueueAsync(userId);
 
@@ -258,7 +253,7 @@ public sealed class PrivateLobbyService(
         var blueId = isHostBlue ? lobby.HostUserId : lobby.GuestUserId.Value;
         var redId = isHostBlue ? lobby.GuestUserId.Value : lobby.HostUserId;
 
-        var matchId = await matchmakingService.CreateMatchAsync(blueId, redId, lobby.Preset);
+        var matchId = await matchmakingService.CreateMatchAsync(blueId, redId, lobby.Preset, MatchMode.Friendly);
         var gameState = await gameStateRepository.GetGameStateAsync(matchId);
 
         await privateLobbyRepository.DeleteLobbyAsync(lobbyId);
@@ -290,5 +285,32 @@ public sealed class PrivateLobbyService(
                 throw new InvalidOperationException("You are already in a private lobby.");
             }
         }
+    }
+
+    private async Task EnsureUserCanCreatePrivateLobbyAsync(Guid userId)
+    {
+        var activeMatchId = await gameStateRepository.GetPlayerActiveMatchAsync(userId);
+        if (activeMatchId.HasValue)
+        {
+            throw new InvalidOperationException("You are already in an active match.");
+        }
+    }
+
+    private async Task ReleaseExistingLobbyAsync(Guid userId)
+    {
+        var existingLobbyId = await privateLobbyRepository.GetPlayerActiveLobbyAsync(userId);
+        if (!existingLobbyId.HasValue)
+        {
+            return;
+        }
+
+        var existingLobby = await privateLobbyRepository.GetLobbyAsync(existingLobbyId.Value);
+        if (existingLobby is null)
+        {
+            await privateLobbyRepository.ClearPlayerActiveLobbyAsync(userId);
+            return;
+        }
+
+        await LeaveLobbyAsync(existingLobbyId.Value, userId);
     }
 }

@@ -156,7 +156,7 @@ public sealed class MatchmakingService(
     }
 
     /// <inheritdoc />
-    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset)
+    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
     {
         var blueUser = await dbContext.Users.FindAsync(bluePlayerId);
         var redUser = await dbContext.Users.FindAsync(redPlayerId);
@@ -179,7 +179,7 @@ public sealed class MatchmakingService(
             Id = matchId,
             BluePlayerId = bluePlayerId,
             RedPlayerId = redPlayerId,
-            TimeControl = preset.ToString(),
+            TimeControl = MatchTypeMetadata.EncodeTimeControl(preset, matchMode),
             InitialTimeMs = timeControl.InitialTimeMs,
             IncrementMs = timeControl.IncrementMs,
             Status = "InProgress",

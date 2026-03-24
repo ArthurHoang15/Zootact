@@ -165,18 +165,22 @@ public sealed class MatchLifecycleService(
 
     private void ApplyMatchResult(MatchEntity match, GameState gameState)
     {
+        var matchMode = MatchTypeMetadata.Parse(match.TimeControl);
+
         match.Status = "Completed";
         match.Result = gameState.Result.ToString();
         match.ResultReason = gameState.ResultReason;
         match.EndedAt = DateTimeOffset.UtcNow;
 
-        var (newBlueElo, newRedElo) = gameState.Result switch
-        {
-            GameResult.BlueWins => EloCalculator.ForBlueWin(match.BlueEloBefore, match.RedEloBefore),
-            GameResult.RedWins => EloCalculator.ForBlueLoss(match.BlueEloBefore, match.RedEloBefore),
-            GameResult.Draw => EloCalculator.ForDraw(match.BlueEloBefore, match.RedEloBefore),
-            _ => (match.BlueEloBefore, match.RedEloBefore)
-        };
+        var (newBlueElo, newRedElo) = matchMode == MatchMode.Friendly
+            ? (match.BlueEloBefore, match.RedEloBefore)
+            : gameState.Result switch
+            {
+                GameResult.BlueWins => EloCalculator.ForBlueWin(match.BlueEloBefore, match.RedEloBefore),
+                GameResult.RedWins => EloCalculator.ForBlueLoss(match.BlueEloBefore, match.RedEloBefore),
+                GameResult.Draw => EloCalculator.ForDraw(match.BlueEloBefore, match.RedEloBefore),
+                _ => (match.BlueEloBefore, match.RedEloBefore)
+            };
 
         match.BlueEloAfter = newBlueElo;
         match.RedEloAfter = newRedElo;
@@ -187,12 +191,20 @@ public sealed class MatchLifecycleService(
             _ => null
         };
 
-        match.BluePlayer.ForestPoints = newBlueElo;
-        match.RedPlayer.ForestPoints = newRedElo;
+        if (matchMode == MatchMode.Rated)
+        {
+            match.BluePlayer.ForestPoints = newBlueElo;
+            match.RedPlayer.ForestPoints = newRedElo;
+        }
     }
 
     private async Task UpdatePlayerStatsAsync(MatchEntity match, GameState gameState)
     {
+        if (MatchTypeMetadata.Parse(match.TimeControl) == MatchMode.Friendly)
+        {
+            return;
+        }
+
         var blueStats = await dbContext.UserStats.FirstOrDefaultAsync(s => s.UserId == match.BluePlayerId)
             ?? dbContext.UserStats.Add(new UserStatsEntity { UserId = match.BluePlayerId }).Entity;
         var redStats = await dbContext.UserStats.FirstOrDefaultAsync(s => s.UserId == match.RedPlayerId)

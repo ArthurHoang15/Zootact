@@ -1,5 +1,6 @@
 using FirebaseAdmin.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure.Data.Entities;
 
@@ -58,6 +59,13 @@ public class FirebaseAuthMiddleware
                 await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token" });
                 return;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while verifying Firebase token");
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                await WriteErrorResponseAsync(context, "Authentication provider unavailable", ex, StatusCodes.Status503ServiceUnavailable);
+                return;
+            }
 
             // Extract user info from token
             var firebaseUid = decodedToken.Uid;
@@ -77,7 +85,7 @@ public class FirebaseAuthMiddleware
                     user.FirebaseUid = firebaseUid;
                     user.AvatarUrl = photoUrl;
                     user.LastLoginAt = DateTimeOffset.UtcNow;
-                    await dbContext.SaveChangesAsync();
+                    await SaveUserChangesAsync(context, dbContext);
 
                     _logger.LogInformation(
                         "Re-linked existing user {UserId} to new Firebase UID {FirebaseUid}",
@@ -113,7 +121,7 @@ public class FirebaseAuthMiddleware
 
                 try
                 {
-                    await dbContext.SaveChangesAsync();
+                    await SaveUserChangesAsync(context, dbContext);
                 }
                 catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(email))
                 {
@@ -145,7 +153,7 @@ public class FirebaseAuthMiddleware
                         });
                     }
 
-                    await dbContext.SaveChangesAsync();
+                    await SaveUserChangesAsync(context, dbContext);
                 }
                 
                 _logger.LogInformation("Created new user from Firebase: {FirebaseUid} -> {Username}", 
@@ -155,7 +163,7 @@ public class FirebaseAuthMiddleware
             {
                 // Update last login
                 user.LastLoginAt = DateTimeOffset.UtcNow;
-                await dbContext.SaveChangesAsync();
+                await SaveUserChangesAsync(context, dbContext);
             }
 
             // Check if user is banned
@@ -188,12 +196,44 @@ public class FirebaseAuthMiddleware
 
             await _next(context);
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database error while syncing Firebase user for path {Path}", context.Request.Path);
+            await WriteErrorResponseAsync(context, "Authentication data sync unavailable", ex, StatusCodes.Status503ServiceUnavailable);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Firebase auth middleware");
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await context.Response.WriteAsJsonAsync(new { error = "Authentication service error" });
+            await WriteErrorResponseAsync(context, "Authentication service error", ex, StatusCodes.Status500InternalServerError);
         }
+    }
+
+    private static async Task SaveUserChangesAsync(HttpContext context, ZootactDbContext dbContext)
+    {
+        await dbContext.SaveChangesAsync(context.RequestAborted);
+    }
+
+    private static async Task WriteErrorResponseAsync(
+        HttpContext context,
+        string error,
+        Exception exception,
+        int statusCode)
+    {
+        context.Response.StatusCode = statusCode;
+
+        var environment = context.RequestServices.GetService<IHostEnvironment>();
+        if (environment?.IsDevelopment() == true)
+        {
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error,
+                exception = exception.GetType().Name,
+                message = exception.Message
+            });
+            return;
+        }
+
+        await context.Response.WriteAsJsonAsync(new { error });
     }
 
     private static bool IsPublicEndpoint(string path)
