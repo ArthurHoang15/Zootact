@@ -21,6 +21,7 @@ interface AuthState {
     firebaseToken: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    authBootstrapComplete: boolean;
     error: string | null;
 }
 
@@ -42,6 +43,7 @@ const initialState: AuthState = {
     firebaseToken: null,
     isAuthenticated: false,
     isLoading: false,
+    authBootstrapComplete: false,
     error: null,
 };
 
@@ -112,7 +114,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const result = await signInWithEmailAndPassword(auth, email, password);
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
-                        set({ firebaseToken: token, user, isAuthenticated: true });
+                        set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -128,7 +130,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         await updateProfile(result.user, { displayName: username });
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
-                        set({ firebaseToken: token, user, isAuthenticated: true });
+                        set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -144,7 +146,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const result = await signInWithPopup(auth, provider);
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
-                        set({ firebaseToken: token, user, isAuthenticated: true });
+                        set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
                     } catch (err: any) {
                         set({ error: err.message });
                         throw err;
@@ -180,7 +182,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                             const user = await fetchCurrentUser(token);
 
                             window.localStorage.removeItem('emailForSignIn');
-                            set({ firebaseToken: token, user, isAuthenticated: true });
+                            set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
                         }
                     } catch (err: any) {
                         set({ error: err.message });
@@ -194,7 +196,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     set({ isLoading: true });
                     try {
                         await signOut(auth);
-                        set({ ...initialState, isLoading: false });
+                        set({ ...initialState, isLoading: false, authBootstrapComplete: true });
                     } catch (err: any) {
                         set({ error: err.message, isLoading: false });
                     }
@@ -214,7 +216,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                                 return;
                             }
 
-                            set({ ...initialState });
+                            set({ ...initialState, authBootstrapComplete: true });
                             return;
                         }
 
@@ -233,6 +235,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                                 user,
                                 isAuthenticated: true,
                                 isLoading: false,
+                                authBootstrapComplete: true,
                                 error: null,
                             });
                         } catch (err: any) {
@@ -242,6 +245,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
                             set({
                                 ...initialState,
+                                authBootstrapComplete: true,
                                 error: err.message,
                             });
                         }

@@ -54,6 +54,7 @@ function App() {
     const route = useHashRouter();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const firebaseToken = useAuthStore(state => state.firebaseToken);
+    const authBootstrapComplete = useAuthStore(state => state.authBootstrapComplete);
     const completeLoginWithLink = useAuthStore(state => state.completeLoginWithLink);
     const initializeAuth = useAuthStore(state => state.initializeAuth);
     const hydrateActiveMatch = useGameStore(state => state.hydrateActiveMatch);
@@ -103,6 +104,10 @@ function App() {
         let disposed = false;
 
         async function bootstrapLiveSession() {
+            if (!authBootstrapComplete) {
+                return;
+            }
+
             if (!isAuthenticated || !firebaseToken) {
                 await signalRService.disconnect();
                 return;
@@ -145,7 +150,7 @@ function App() {
         return () => {
             disposed = true;
         };
-    }, [firebaseToken, hydrateActiveMatch, isAuthenticated, resetGame, route]);
+    }, [authBootstrapComplete, firebaseToken, hydrateActiveMatch, isAuthenticated, resetGame, route]);
 
     useEffect(() => {
         if (!matchId || !isAuthenticated || !signalRService.isConnected()) {

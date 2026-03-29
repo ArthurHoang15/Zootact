@@ -40,6 +40,7 @@ export interface RecentProfileMatchDto {
 export interface MyProfileDto {
     user: UserDto;
     stats: UserStatsDto;
+    friendly_stats: UserStatsDto;
     recent_matches: RecentProfileMatchDto[];
 }
 

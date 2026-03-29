@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Zootact.Core.Domain;
 using Zootact.Core.DTOs;
@@ -14,6 +15,7 @@ public sealed class MatchLifecycleService(
     ZootactDbContext dbContext,
     IGameStateRepository gameStateRepository,
     AiServiceClient aiServiceClient,
+    IServiceScopeFactory serviceScopeFactory,
     ILogger<MatchLifecycleService> logger) : IMatchLifecycleService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -82,8 +84,7 @@ public sealed class MatchLifecycleService(
         await UpdatePlayerStatsAsync(match, gameState);
         await EnsureAnalysisRecordAsync(match.Id);
         await dbContext.SaveChangesAsync();
-
-        await GenerateAnalysisAsync(match, gameState);
+        QueueAnalysisGeneration(match.Id, gameState);
 
         await gameStateRepository.ClearPlayerActiveMatchAsync(gameState.BluePlayerId);
         await gameStateRepository.ClearPlayerActiveMatchAsync(gameState.RedPlayerId);
@@ -349,6 +350,126 @@ public sealed class MatchLifecycleService(
         }
 
         await dbContext.SaveChangesAsync();
+    }
+
+    private void QueueAnalysisGeneration(Guid matchId, GameState gameState)
+    {
+        var blurCounts = new Dictionary<Guid, int>
+        {
+            [gameState.BluePlayerId] = gameState.BlueBlurCount,
+            [gameState.RedPlayerId] = gameState.RedBlurCount
+        };
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await GenerateAnalysisInBackgroundAsync(matchId, blurCounts);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Background analysis generation failed for match {MatchId}", matchId);
+            }
+        });
+    }
+
+    private async Task GenerateAnalysisInBackgroundAsync(Guid matchId, IReadOnlyDictionary<Guid, int> blurCounts)
+    {
+        using var scope = serviceScopeFactory.CreateScope();
+        var scopedDbContext = scope.ServiceProvider.GetRequiredService<ZootactDbContext>();
+        var scopedAiServiceClient = scope.ServiceProvider.GetRequiredService<AiServiceClient>();
+
+        var match = await scopedDbContext.Matches
+            .Include(m => m.Analysis)
+            .FirstOrDefaultAsync(m => m.Id == matchId);
+
+        if (match is null)
+        {
+            return;
+        }
+
+        var analysisEntity = match.Analysis ?? await scopedDbContext.MatchAnalyses.FirstOrDefaultAsync(a => a.MatchId == matchId);
+        if (analysisEntity is null || analysisEntity.Status == "Completed")
+        {
+            return;
+        }
+
+        var moves = await scopedDbContext.GameMoves
+            .Where(m => m.MatchId == matchId)
+            .OrderBy(m => m.MoveNumber)
+            .ToListAsync();
+
+        if (moves.Count == 0)
+        {
+            analysisEntity.Status = "Completed";
+            analysisEntity.AnalysisJson = """{"moves":[],"summary":null}""";
+            analysisEntity.AntiCheatJson = "[]";
+            analysisEntity.UpdatedAt = DateTimeOffset.UtcNow;
+            await scopedDbContext.SaveChangesAsync();
+            return;
+        }
+
+        try
+        {
+            var analysisRequest = new
+            {
+                moves = moves.Select(m => new
+                {
+                    move_number = m.MoveNumber,
+                    player = m.PlayerId == match.BluePlayerId ? "Blue" : "Red",
+                    from = m.FromPosition,
+                    to = m.ToPosition,
+                    piece = m.PieceType
+                }).ToList()
+            };
+
+            var analysisJson = await scopedAiServiceClient.AnalyzeGameAsync(analysisRequest) ?? """{"moves":[],"summary":null}""";
+
+            var antiCheatResults = new List<AntiCheatPlayerSummaryDto>();
+            foreach (var participant in new[]
+                     {
+                         new { UserId = match.BluePlayerId, BlurCount = blurCounts.TryGetValue(match.BluePlayerId, out var blueBlurCount) ? blueBlurCount : 0 },
+                         new { UserId = match.RedPlayerId, BlurCount = blurCounts.TryGetValue(match.RedPlayerId, out var redBlurCount) ? redBlurCount : 0 }
+                     })
+            {
+                var moveTimes = moves
+                    .Where(m => m.PlayerId == participant.UserId)
+                    .Select(m => m.TimeSpentMs)
+                    .ToList();
+
+                var antiCheatJson = await scopedAiServiceClient.AnalyzeMoveTimesAsync(new
+                {
+                    user_id = participant.UserId.ToString(),
+                    match_id = match.Id.ToString(),
+                    move_times_ms = moveTimes
+                });
+
+                var antiCheatNode = antiCheatJson is null ? null : JsonNode.Parse(antiCheatJson);
+                antiCheatResults.Add(new AntiCheatPlayerSummaryDto
+                {
+                    UserId = participant.UserId.ToString(),
+                    MoveCount = antiCheatNode?["move_count"]?.GetValue<int>() ?? moveTimes.Count,
+                    IsSuspicious = antiCheatNode?["is_suspicious"]?.GetValue<bool>() ?? false,
+                    SuspicionLevel = antiCheatNode?["suspicion_level"]?.GetValue<string>() ?? "none",
+                    ConfidenceScore = antiCheatNode?["confidence_score"]?.GetValue<double>() ?? 0,
+                    SuspicionReasons = antiCheatNode?["suspicion_reasons"]?.Deserialize<List<string>>(JsonOptions) ?? [],
+                    BlurCount = participant.BlurCount
+                });
+            }
+
+            analysisEntity.Status = "Completed";
+            analysisEntity.AnalysisJson = analysisJson;
+            analysisEntity.AntiCheatJson = JsonSerializer.Serialize(antiCheatResults, JsonOptions);
+            analysisEntity.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to generate post-game analysis for match {MatchId}", matchId);
+            analysisEntity.Status = "Failed";
+            analysisEntity.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        await scopedDbContext.SaveChangesAsync();
     }
 
     private static FinalizedMatchDto BuildFinalizedResult(MatchEntity match)

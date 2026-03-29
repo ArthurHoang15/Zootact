@@ -198,11 +198,16 @@ function canCapture(
     const defenderInTrap = isTrapCell(defenderPos.row, defenderPos.col);
     const effectiveDefenderRank = defenderInTrap ? 0 : PIECE_RANKS[defender.type];
     const attackerRank = PIECE_RANKS[attacker.type];
+    const attackerInRiver = isRiverCell(attackerPos.row, attackerPos.col);
+    const defenderInRiver = isRiverCell(defenderPos.row, defenderPos.col);
+
+    if (attackerInRiver !== defenderInRiver) {
+        return false;
+    }
 
     // Special Rat-Elephant rules
     if (attacker.type === 'Rat' && defender.type === 'Elephant') {
         // Rat can only capture Elephant from land (not from river)
-        const attackerInRiver = isRiverCell(attackerPos.row, attackerPos.col);
         return !attackerInRiver;
     }
 

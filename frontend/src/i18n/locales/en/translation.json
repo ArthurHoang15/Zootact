@@ -166,6 +166,9 @@
         "usernamePlaceholder": "Enter a new username",
         "usernameRequired": "Username cannot be empty.",
         "goHome": "Back to home",
+        "ratedStatsHint": "Rated match performance affects your Forest Points.",
+        "friendlyStatsTitle": "Friendly Match Stats",
+        "friendlyStatsHint": "Friendly matches are tracked in history but do not change your Elo.",
         "outcomeWin": "Win",
         "outcomeLoss": "Loss",
         "outcomeDraw": "Draw"

@@ -153,6 +153,7 @@ export function ProfilePage() {
 
     const currentUser = profile?.user ?? authUser;
     const stats = profile?.stats ?? emptyStats;
+    const friendlyStats = profile?.friendly_stats ?? emptyStats;
     const recentMatches = profile?.recent_matches ?? [];
 
     return (
@@ -244,23 +245,56 @@ export function ProfilePage() {
                                 </div>
                             </Card>
 
-                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                                {[
-                                    [t('profile.totalGames'), stats.total_games],
-                                    [t('profile.wins'), stats.wins],
-                                    [t('profile.losses'), stats.losses],
-                                    [t('profile.draws'), stats.draws],
-                                    [t('profile.winRate'), `${stats.win_rate}%`],
-                                    [t('profile.currentStreak'), stats.current_streak],
-                                    [t('profile.bestStreak'), stats.best_streak],
-                                    [t('profile.avgMoveTime'), formatAverageMoveTime(stats.avg_move_time_ms)],
-                                    [t('profile.totalPlayTime'), formatPlayTime(stats.total_play_time_ms)],
-                                ].map(([label, value]) => (
-                                    <Card key={label as string} padding="md" className="bg-white">
-                                        <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{label}</p>
-                                        <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
-                                    </Card>
-                                ))}
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="font-display text-2xl text-forest-dark">{t('profile.stats')}</h3>
+                                    <p className="mt-1 text-sm text-forest-light">{t('profile.ratedStatsHint', 'Rated match performance affects your Forest Points.')}</p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    {[
+                                        [t('profile.totalGames'), stats.total_games],
+                                        [t('profile.wins'), stats.wins],
+                                        [t('profile.losses'), stats.losses],
+                                        [t('profile.draws'), stats.draws],
+                                        [t('profile.winRate'), `${stats.win_rate}%`],
+                                        [t('profile.currentStreak'), stats.current_streak],
+                                        [t('profile.bestStreak'), stats.best_streak],
+                                        [t('profile.avgMoveTime'), formatAverageMoveTime(stats.avg_move_time_ms)],
+                                        [t('profile.totalPlayTime'), formatPlayTime(stats.total_play_time_ms)],
+                                    ].map(([label, value]) => (
+                                        <Card key={label as string} padding="md" className="bg-white">
+                                            <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{label}</p>
+                                            <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="font-display text-2xl text-forest-dark">{t('profile.friendlyStatsTitle', 'Friendly Match Stats')}</h3>
+                                    <p className="mt-1 text-sm text-forest-light">{t('profile.friendlyStatsHint', 'Friendly matches are tracked in history but do not change your Elo.')}</p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    {[
+                                        [t('profile.totalGames'), friendlyStats.total_games],
+                                        [t('profile.wins'), friendlyStats.wins],
+                                        [t('profile.losses'), friendlyStats.losses],
+                                        [t('profile.draws'), friendlyStats.draws],
+                                        [t('profile.winRate'), `${friendlyStats.win_rate}%`],
+                                        [t('profile.currentStreak'), friendlyStats.current_streak],
+                                        [t('profile.bestStreak'), friendlyStats.best_streak],
+                                        [t('profile.avgMoveTime'), formatAverageMoveTime(friendlyStats.avg_move_time_ms)],
+                                        [t('profile.totalPlayTime'), formatPlayTime(friendlyStats.total_play_time_ms)],
+                                    ].map(([label, value]) => (
+                                        <Card key={`friendly-${label as string}`} padding="md" className="bg-carrot-orange/5">
+                                            <p className="text-sm font-bold uppercase tracking-[0.12em] text-carrot-orange-dark">{label}</p>
+                                            <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
+                                        </Card>
+                                    ))}
+                                </div>
                             </div>
                         </motion.section>
 

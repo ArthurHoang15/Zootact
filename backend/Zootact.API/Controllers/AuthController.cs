@@ -45,6 +45,45 @@ public class AuthController(
         };
     }
 
+    private static UserStatsDto MapFriendlyStatsDto(
+        IReadOnlyList<(bool Won, bool Draw, long DurationMs)> matches)
+    {
+        var totalGames = matches.Count;
+        var wins = matches.Count(match => match.Won);
+        var draws = matches.Count(match => match.Draw);
+        var losses = totalGames - wins - draws;
+        var totalPlayTimeMs = matches.Sum(match => match.DurationMs);
+
+        var currentStreak = 0;
+        var bestStreak = 0;
+
+        foreach (var match in matches)
+        {
+            if (match.Won)
+            {
+                currentStreak++;
+                bestStreak = Math.Max(bestStreak, currentStreak);
+            }
+            else
+            {
+                currentStreak = 0;
+            }
+        }
+
+        return new UserStatsDto
+        {
+            TotalGames = totalGames,
+            Wins = wins,
+            Losses = losses,
+            Draws = draws,
+            WinRate = totalGames == 0 ? 0 : Math.Round((decimal)wins / totalGames * 100, 1),
+            CurrentStreak = currentStreak,
+            BestStreak = bestStreak,
+            AvgMoveTimeMs = null,
+            TotalPlayTimeMs = totalPlayTimeMs
+        };
+    }
+
     /// <summary>
     /// Syncs Firebase user to PostgreSQL database (auto-creates if new user).
     /// This endpoint is called automatically by the frontend after Firebase login.
@@ -204,20 +243,34 @@ public class AuthController(
             .Include(u => u.Stats)
             .FirstAsync(u => u.Id == userId);
 
-        var recentMatches = await dbContext.Matches
+        var completedMatches = await dbContext.Matches
             .Include(m => m.BluePlayer)
             .Include(m => m.RedPlayer)
             .Where(m =>
                 m.Status == "Completed" &&
                 (m.BluePlayerId == dbUser.Id || m.RedPlayerId == dbUser.Id))
             .OrderByDescending(m => m.EndedAt ?? m.StartedAt)
-            .Take(5)
             .ToListAsync();
+
+        var recentMatches = completedMatches
+            .Take(5)
+            .ToList();
+
+        var friendlyMatches = completedMatches
+            .Where(match => MatchTypeMetadata.Parse(match.TimeControl) == MatchMode.Friendly)
+            .OrderBy(m => m.EndedAt ?? m.StartedAt)
+            .Select(match => (
+                Won: match.WinnerId == dbUser.Id,
+                Draw: match.WinnerId == null,
+                DurationMs: Math.Max(0, (long)((match.EndedAt ?? match.StartedAt) - match.StartedAt).TotalMilliseconds)
+            ))
+            .ToList();
 
         return new MyProfileDto
         {
             User = MapUserDto(dbUser),
             Stats = MapStatsDto(dbUser.Stats),
+            FriendlyStats = MapFriendlyStatsDto(friendlyMatches),
             RecentMatches = recentMatches.Select(match =>
             {
                 var isBlue = match.BluePlayerId == dbUser.Id;

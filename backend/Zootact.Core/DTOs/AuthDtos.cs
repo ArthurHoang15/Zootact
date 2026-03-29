@@ -103,6 +103,9 @@ public record MyProfileDto
     [JsonPropertyName("stats")]
     public required UserStatsDto Stats { get; init; }
 
+    [JsonPropertyName("friendly_stats")]
+    public required UserStatsDto FriendlyStats { get; init; }
+
     [JsonPropertyName("recent_matches")]
     public required IReadOnlyList<RecentProfileMatchDto> RecentMatches { get; init; }
 }
