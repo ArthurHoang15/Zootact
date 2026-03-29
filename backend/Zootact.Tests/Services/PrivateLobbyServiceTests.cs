@@ -8,17 +8,13 @@ namespace Zootact.Tests.Services;
 
 public sealed class PrivateLobbyServiceTests
 {
-    [Theory]
-    [InlineData(TimeControlPreset.Blitz)]
-    [InlineData(TimeControlPreset.Rapid)]
-    [InlineData(TimeControlPreset.Classical)]
-    public async Task CreateLobby_UsesRequestedPreset(TimeControlPreset preset)
+    [Fact]
+    public async Task CreateLobby_CreatesUntimedFriendlyLobby()
     {
         var fixture = new PrivateLobbyFixture();
 
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, preset);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
-        Assert.Equal(preset, lobby.Preset);
         Assert.Equal(fixture.HostId, lobby.HostUserId);
         Assert.Null(lobby.GuestUserId);
         Assert.False(lobby.GuestReady);
@@ -28,7 +24,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task JoinLobby_AssignsGuestAndDefaultsReady()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
         var updatedLobby = await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
 
@@ -41,7 +37,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task JoinLobby_RejectsThirdPlayer()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -54,7 +50,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task HostCanReopenOwnLobbyLink()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Rapid);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
         var reopenedLobby = await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.HostId);
 
@@ -66,7 +62,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task StartCountdown_RequiresGuestToJoin()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             fixture.Service.StartCountdownAsync(lobby.LobbyId, fixture.HostId));
@@ -78,7 +74,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task StartCountdown_RequiresGuestReady()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
         await fixture.Service.SetGuestReadyAsync(lobby.LobbyId, fixture.GuestId, false);
 
@@ -92,7 +88,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task StartCountdown_OnlyHostCanStart()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -105,7 +101,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task CancelCountdown_ResetsLobbyState()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
         await fixture.Service.StartCountdownAsync(lobby.LobbyId, fixture.HostId);
 
@@ -121,7 +117,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task GuestLeavingDuringCountdown_CancelsCountdownAndKeepsHostInLobby()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
         await fixture.Service.StartCountdownAsync(lobby.LobbyId, fixture.HostId);
 
@@ -140,7 +136,7 @@ public sealed class PrivateLobbyServiceTests
     public async Task TryStartMatch_CompletesCountdownCreatesMatchAndClearsLobbyMappings()
     {
         var fixture = new PrivateLobbyFixture();
-        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Classical);
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
         await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
         var countdownLobby = await fixture.Service.StartCountdownAsync(lobby.LobbyId, fixture.HostId);
         countdownLobby.CountdownEndAt = DateTimeOffset.UtcNow.AddSeconds(-1);
@@ -155,7 +151,7 @@ public sealed class PrivateLobbyServiceTests
         Assert.Null(await fixture.PrivateLobbyRepository.GetPlayerActiveLobbyAsync(fixture.GuestId));
         Assert.NotNull(await fixture.GameStateRepository.GetGameStateAsync(matchId!.Value));
         Assert.Contains(matchId.Value, fixture.MatchNotifications.StartedMatches);
-        Assert.Equal(MatchMode.Friendly, fixture.MatchmakingService.CreatedMatchTypes[matchId.Value]);
+        Assert.Equal("Friendly:Untimed", fixture.MatchmakingService.CreatedStoredTimeControls[matchId.Value]);
     }
 
     [Fact]
@@ -165,7 +161,7 @@ public sealed class PrivateLobbyServiceTests
         await fixture.GameStateRepository.SetPlayerActiveMatchAsync(fixture.HostId, Guid.NewGuid());
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz));
+            fixture.Service.CreateLobbyAsync(fixture.HostId));
 
         Assert.Equal("You are already in an active match.", error.Message);
     }
@@ -174,9 +170,9 @@ public sealed class PrivateLobbyServiceTests
     public async Task CreateLobby_ReleasesExistingLobbyBeforeCreatingNewOne()
     {
         var fixture = new PrivateLobbyFixture();
-        var firstLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Blitz);
+        var firstLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
-        var secondLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId, TimeControlPreset.Rapid);
+        var secondLobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
 
         Assert.NotEqual(firstLobby.LobbyId, secondLobby.LobbyId);
         Assert.Null(await fixture.PrivateLobbyRepository.GetLobbyAsync(firstLobby.LobbyId));
@@ -316,7 +312,7 @@ public sealed class PrivateLobbyServiceTests
     private sealed class FakeMatchmakingService(InMemoryGameStateRepository gameStateRepository) : IMatchmakingService
     {
         public List<Guid> QueueLeaves { get; } = [];
-        public Dictionary<Guid, MatchMode> CreatedMatchTypes { get; } = [];
+        public Dictionary<Guid, string> CreatedStoredTimeControls { get; } = [];
 
         public Task<Guid?> JoinQueueAsync(Guid userId, TimeControlPreset preset) => Task.FromResult<Guid?>(null);
 
@@ -330,12 +326,21 @@ public sealed class PrivateLobbyServiceTests
 
         public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
         {
+            return await CreateMatchAsync(
+                bluePlayerId,
+                redPlayerId,
+                TimeControl.FromPreset(preset),
+                MatchTypeMetadata.EncodeTimeControl(preset, matchMode));
+        }
+
+        public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControl timeControl, string storedTimeControl)
+        {
             var matchId = Guid.NewGuid();
-            var state = GameState.Create(matchId, bluePlayerId, redPlayerId, preset);
+            var state = GameState.Create(matchId, bluePlayerId, redPlayerId, timeControl);
             await gameStateRepository.SaveGameStateAsync(state);
             await gameStateRepository.SetPlayerActiveMatchAsync(bluePlayerId, matchId);
             await gameStateRepository.SetPlayerActiveMatchAsync(redPlayerId, matchId);
-            CreatedMatchTypes[matchId] = matchMode;
+            CreatedStoredTimeControls[matchId] = storedTimeControl;
             return matchId;
         }
     }

@@ -27,6 +27,11 @@ public sealed class MatchmakingService(
     /// <inheritdoc />
     public async Task<Guid?> JoinQueueAsync(Guid userId, TimeControlPreset preset)
     {
+        if (preset == TimeControlPreset.Untimed)
+        {
+            throw new InvalidOperationException("Untimed matches are not available in public matchmaking.");
+        }
+
         var queueLockKey = GetQueueLockKey(preset);
         var lockToken = Guid.NewGuid().ToString("N");
         var lockAcquired = false;
@@ -158,6 +163,16 @@ public sealed class MatchmakingService(
     /// <inheritdoc />
     public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
     {
+        return await CreateMatchAsync(
+            bluePlayerId,
+            redPlayerId,
+            TimeControl.FromPreset(preset),
+            MatchTypeMetadata.EncodeTimeControl(preset, matchMode));
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControl timeControl, string storedTimeControl)
+    {
         var blueUser = await dbContext.Users.FindAsync(bluePlayerId);
         var redUser = await dbContext.Users.FindAsync(redPlayerId);
 
@@ -167,19 +182,18 @@ public sealed class MatchmakingService(
         }
 
         var matchId = Guid.NewGuid();
-        var gameState = GameState.Create(matchId, bluePlayerId, redPlayerId, preset);
+        var gameState = GameState.Create(matchId, bluePlayerId, redPlayerId, timeControl);
 
         await gameStateRepository.SaveGameStateAsync(gameState);
         await gameStateRepository.SetPlayerActiveMatchAsync(bluePlayerId, matchId);
         await gameStateRepository.SetPlayerActiveMatchAsync(redPlayerId, matchId);
 
-        var timeControl = TimeControl.FromPreset(preset);
         var match = new MatchEntity
         {
             Id = matchId,
             BluePlayerId = bluePlayerId,
             RedPlayerId = redPlayerId,
-            TimeControl = MatchTypeMetadata.EncodeTimeControl(preset, matchMode),
+            TimeControl = storedTimeControl,
             InitialTimeMs = timeControl.InitialTimeMs,
             IncrementMs = timeControl.IncrementMs,
             Status = "InProgress",

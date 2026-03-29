@@ -14,14 +14,14 @@ public sealed class PrivateLobbyService(
 {
     private static readonly TimeSpan CountdownDuration = TimeSpan.FromSeconds(5);
 
-    public async Task<PrivateLobby> CreateLobbyAsync(Guid userId, TimeControlPreset preset)
+    public async Task<PrivateLobby> CreateLobbyAsync(Guid userId)
     {
         await EnsureUserCanCreatePrivateLobbyAsync(userId);
         await ReleaseExistingLobbyAsync(userId);
 
         await matchmakingService.LeaveQueueAsync(userId);
 
-        var lobby = PrivateLobby.Create(userId, preset);
+        var lobby = PrivateLobby.Create(userId);
         await privateLobbyRepository.SaveLobbyAsync(lobby);
         await privateLobbyRepository.SetPlayerActiveLobbyAsync(userId, lobby.LobbyId);
 
@@ -271,7 +271,11 @@ public sealed class PrivateLobbyService(
         var blueId = isHostBlue ? lobby.HostUserId : lobby.GuestUserId.Value;
         var redId = isHostBlue ? lobby.GuestUserId.Value : lobby.HostUserId;
 
-        var matchId = await matchmakingService.CreateMatchAsync(blueId, redId, lobby.Preset, MatchMode.Friendly);
+        var matchId = await matchmakingService.CreateMatchAsync(
+            blueId,
+            redId,
+            TimeControl.Untimed(),
+            MatchTypeMetadata.EncodeFriendlyUntimed());
         var gameState = await gameStateRepository.GetGameStateAsync(matchId);
 
         await privateLobbyRepository.DeleteLobbyAsync(lobbyId);

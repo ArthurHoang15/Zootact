@@ -7,7 +7,8 @@ public enum TimeControlPreset
 {
     Blitz,      // 3 minutes
     Rapid,      // 10 minutes
-    Classical   // 30 minutes
+    Classical,  // 30 minutes
+    Untimed
 }
 
 /// <summary>
@@ -27,6 +28,8 @@ public record TimeControl(
     long RedTimeRemainingMs,
     DateTimeOffset LastMoveTimestamp)
 {
+    public bool IsUntimed => Preset == TimeControlPreset.Untimed;
+
     /// <summary>
     /// Creates a Blitz time control (3 min + 0 sec).
     /// </summary>
@@ -59,6 +62,17 @@ public record TimeControl(
         BlueTimeRemainingMs: 30 * 60 * 1000,
         RedTimeRemainingMs: 30 * 60 * 1000,
         DateTimeOffset.UtcNow);
+
+    /// <summary>
+    /// Creates an untimed time control that tracks elapsed turn time per player.
+    /// </summary>
+    public static TimeControl Untimed() => new(
+        TimeControlPreset.Untimed,
+        InitialTimeMs: 0,
+        IncrementMs: 0,
+        BlueTimeRemainingMs: 0,
+        RedTimeRemainingMs: 0,
+        DateTimeOffset.UtcNow);
     
     /// <summary>
     /// Creates a time control from a preset.
@@ -68,6 +82,7 @@ public record TimeControl(
         TimeControlPreset.Blitz => Blitz(),
         TimeControlPreset.Rapid => Rapid(),
         TimeControlPreset.Classical => Classical(),
+        TimeControlPreset.Untimed => Untimed(),
         _ => Blitz()
     };
     
@@ -81,16 +96,30 @@ public record TimeControl(
     {
         var blueTime = BlueTimeRemainingMs;
         var redTime = RedTimeRemainingMs;
-        
-        if (player == Player.Blue)
+
+        if (IsUntimed)
         {
-            blueTime = Math.Max(0, blueTime - elapsedMs + IncrementMs);
+            if (player == Player.Blue)
+            {
+                blueTime += elapsedMs;
+            }
+            else
+            {
+                redTime += elapsedMs;
+            }
         }
         else
         {
-            redTime = Math.Max(0, redTime - elapsedMs + IncrementMs);
+            if (player == Player.Blue)
+            {
+                blueTime = Math.Max(0, blueTime - elapsedMs + IncrementMs);
+            }
+            else
+            {
+                redTime = Math.Max(0, redTime - elapsedMs + IncrementMs);
+            }
         }
-        
+
         return this with
         {
             BlueTimeRemainingMs = blueTime,
@@ -103,7 +132,7 @@ public record TimeControl(
     /// Checks if a player has timed out.
     /// </summary>
     public bool IsTimeout(Player player) =>
-        player == Player.Blue ? BlueTimeRemainingMs <= 0 : RedTimeRemainingMs <= 0;
+        !IsUntimed && (player == Player.Blue ? BlueTimeRemainingMs <= 0 : RedTimeRemainingMs <= 0);
     
     /// <summary>
     /// Gets remaining time for a player in milliseconds.
@@ -123,13 +152,27 @@ public record TimeControl(
         var blueTime = BlueTimeRemainingMs;
         var redTime = RedTimeRemainingMs;
 
-        if (currentTurn == Player.Blue)
+        if (IsUntimed)
         {
-            blueTime = Math.Max(0, blueTime - elapsedMs);
+            if (currentTurn == Player.Blue)
+            {
+                blueTime += elapsedMs;
+            }
+            else
+            {
+                redTime += elapsedMs;
+            }
         }
         else
         {
-            redTime = Math.Max(0, redTime - elapsedMs);
+            if (currentTurn == Player.Blue)
+            {
+                blueTime = Math.Max(0, blueTime - elapsedMs);
+            }
+            else
+            {
+                redTime = Math.Max(0, redTime - elapsedMs);
+            }
         }
 
         return (blueTime, redTime);

@@ -4,7 +4,7 @@ namespace Zootact.Core.Interfaces;
 
 public interface IPrivateLobbyService
 {
-    Task<PrivateLobby> CreateLobbyAsync(Guid userId, TimeControlPreset preset);
+    Task<PrivateLobby> CreateLobbyAsync(Guid userId);
     Task<PrivateLobby?> GetActiveLobbyAsync(Guid userId);
     Task<PrivateLobby?> GetLobbyAsync(Guid lobbyId);
     Task<PrivateLobby> JoinLobbyAsync(Guid lobbyId, Guid userId);

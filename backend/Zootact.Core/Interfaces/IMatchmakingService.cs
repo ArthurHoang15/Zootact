@@ -27,4 +27,9 @@ public interface IMatchmakingService
     /// Creates a new match between two players.
     /// </summary>
     Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated);
+
+    /// <summary>
+    /// Creates a new match between two players using an explicit time-control configuration.
+    /// </summary>
+    Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControl timeControl, string storedTimeControl);
 }

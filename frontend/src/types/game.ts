@@ -29,7 +29,8 @@ export type GameEndReason =
     | 'Agreement'
     | 'Abandonment';
 
-export type TimeControlPreset = 'Blitz' | 'Rapid' | 'Classical';
+export type TimeControlPreset = 'Blitz' | 'Rapid' | 'Classical' | 'Untimed';
+export type ClockMode = 'countdown' | 'countup';
 
 export type TerrainType = 'Normal' | 'River' | 'Trap' | 'Den';
 
@@ -51,6 +52,8 @@ export interface BoardDto {
 
 export interface TimeControlDto {
     preset: TimeControlPreset;
+    is_untimed: boolean;
+    clock_mode: ClockMode;
     initial_time_ms: number;
     increment_ms: number;
 }

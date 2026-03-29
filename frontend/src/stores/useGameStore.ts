@@ -34,6 +34,8 @@ interface GameState {
     chatMessages: ChatMessageDto[];
     analysis: MatchAnalysisResponse | null;
     analysisStatus: string | null;
+    clockMode: 'countdown' | 'countup';
+    isUntimed: boolean;
     isGameOver: boolean;
     result: GameResult;
     endReason: GameEndReason | null;
@@ -81,6 +83,8 @@ const initialState: GameState = {
     chatMessages: [],
     analysis: null,
     analysisStatus: null,
+    clockMode: 'countdown',
+    isUntimed: false,
     isGameOver: false,
     result: 'InProgress',
     endReason: null,
@@ -110,6 +114,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 chatMessages: [],
                 analysis: null,
                 analysisStatus: null,
+                clockMode: data.time_control.clock_mode,
+                isUntimed: data.time_control.is_untimed,
                 isGameOver: false,
                 result: 'InProgress',
                 endReason: null,
@@ -143,6 +149,8 @@ export const useGameStore = create<GameState & GameActions>()(
                 chatMessages: [],
                 analysis: null,
                 analysisStatus: null,
+                clockMode: state.time_control.clock_mode,
+                isUntimed: state.time_control.is_untimed,
                 isGameOver: state.result !== 'InProgress',
                 result: state.result,
                 endReason: state.result_reason,
@@ -234,10 +242,18 @@ export const useGameStore = create<GameState & GameActions>()(
                 return;
             }
 
-            if (currentTurn === myColor) {
-                set(state => ({ myTimeMs: Math.max(0, state.myTimeMs - deltaMs) }));
+            if (get().clockMode === 'countup') {
+                if (currentTurn === myColor) {
+                    set(state => ({ myTimeMs: state.myTimeMs + deltaMs }));
+                } else {
+                    set(state => ({ opponentTimeMs: state.opponentTimeMs + deltaMs }));
+                }
             } else {
-                set(state => ({ opponentTimeMs: Math.max(0, state.opponentTimeMs - deltaMs) }));
+                if (currentTurn === myColor) {
+                    set(state => ({ myTimeMs: Math.max(0, state.myTimeMs - deltaMs) }));
+                } else {
+                    set(state => ({ opponentTimeMs: Math.max(0, state.opponentTimeMs - deltaMs) }));
+                }
             }
         },
 

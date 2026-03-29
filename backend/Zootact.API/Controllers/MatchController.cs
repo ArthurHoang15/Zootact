@@ -119,6 +119,8 @@ public class MatchController(
             TimeControl = new TimeControlDto
             {
                 Preset = state.TimeControl.Preset.ToString(),
+                IsUntimed = state.TimeControl.IsUntimed,
+                ClockMode = state.TimeControl.IsUntimed ? "countup" : "countdown",
                 InitialTimeMs = state.TimeControl.InitialTimeMs,
                 IncrementMs = state.TimeControl.IncrementMs
             },

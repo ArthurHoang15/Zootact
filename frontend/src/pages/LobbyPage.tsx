@@ -114,6 +114,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
     const guestReady = lobby?.guest?.is_ready ?? false;
     const canStart = Boolean(lobby && isHost && lobby.can_start && !lobby.countdown_active);
     const inviteLink = buildInviteLink(lobbyId);
+    const lobbyModeLabel = lobby?.mode === 'FriendlyUntimed'
+        ? t('lobby.untimedMode')
+        : lobby?.mode ?? '...';
 
     async function handleCopyLink() {
         try {
@@ -219,9 +222,10 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                 <div className="flex flex-wrap items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">
-                                            {t('matchmaking.selectMode')}
+                                            {t('lobby.modeLabel')}
                                         </p>
-                                        <h2 className="mt-2 font-display text-3xl text-forest-dark sm:text-4xl">{lobby?.preset ?? '...'}</h2>
+                                        <h2 className="mt-2 font-display text-3xl text-forest-dark sm:text-4xl">{lobbyModeLabel}</h2>
+                                        <p className="mt-2 text-sm text-forest-light">{t('lobby.untimedModeHint')}</p>
                                     </div>
                                     <div className="rounded-full bg-cream px-4 py-2 text-sm font-bold text-forest-dark">
                                         ID: {lobbyId.slice(0, 8)}

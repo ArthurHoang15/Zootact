@@ -5,10 +5,11 @@ namespace Zootact.Core.Domain;
 /// </summary>
 public sealed class PrivateLobby
 {
+    public const string FriendlyUntimedMode = "FriendlyUntimed";
+
     public required Guid LobbyId { get; init; }
     public required Guid HostUserId { get; init; }
     public Guid? GuestUserId { get; set; }
-    public required TimeControlPreset Preset { get; init; }
     public bool HostReady { get; set; }
     public bool GuestReady { get; set; }
     public bool CountdownActive { get; set; }
@@ -22,13 +23,12 @@ public sealed class PrivateLobby
 
     public void Touch() => UpdatedAt = DateTimeOffset.UtcNow;
 
-    public static PrivateLobby Create(Guid hostUserId, TimeControlPreset preset)
+    public static PrivateLobby Create(Guid hostUserId)
     {
         return new PrivateLobby
         {
             LobbyId = Guid.NewGuid(),
             HostUserId = hostUserId,
-            Preset = preset,
             HostReady = false,
             GuestReady = false,
             CountdownActive = false,

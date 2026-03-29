@@ -27,18 +27,9 @@ public sealed class LobbiesController(
             return Unauthorized();
         }
 
-        if (!Enum.TryParse<TimeControlPreset>(request.TimeControl, out var preset))
-        {
-            return BadRequest(new ErrorResponse
-            {
-                Error = "InvalidTimeControl",
-                Message = "Invalid time control preset."
-            });
-        }
-
         try
         {
-            var lobby = await privateLobbyService.CreateLobbyAsync(userId.Value, preset);
+            var lobby = await privateLobbyService.CreateLobbyAsync(userId.Value);
             return CreatedAtAction(nameof(GetLobby), new { id = lobby.LobbyId }, new LobbyActionResponse
             {
                 Message = "Private lobby created.",
@@ -242,7 +233,7 @@ public sealed class LobbiesController(
         return new PrivateLobbyDto
         {
             LobbyId = lobby.LobbyId.ToString(),
-            Preset = lobby.Preset.ToString(),
+            Mode = PrivateLobby.FriendlyUntimedMode,
             Host = ToLobbyPlayerDto(host, isHost: true, isReady: false),
             Guest = guest is null ? null : ToLobbyPlayerDto(guest, isHost: false, isReady: lobby.GuestReady),
             CurrentUserRole = currentUserId == lobby.HostUserId

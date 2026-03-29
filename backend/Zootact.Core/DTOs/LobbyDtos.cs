@@ -28,8 +28,8 @@ public record PrivateLobbyDto
     [JsonPropertyName("lobby_id")]
     public required string LobbyId { get; init; }
 
-    [JsonPropertyName("preset")]
-    public required string Preset { get; init; }
+    [JsonPropertyName("mode")]
+    public required string Mode { get; init; }
 
     [JsonPropertyName("host")]
     public required LobbyPlayerDto Host { get; init; }
@@ -66,10 +66,7 @@ public record LobbyActionResponse
 }
 
 public record CreateLobbyRequest
-{
-    [JsonPropertyName("time_control")]
-    public required string TimeControl { get; init; }
-}
+{ }
 
 public record LobbyReadyRequest
 {

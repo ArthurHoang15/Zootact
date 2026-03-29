@@ -35,6 +35,8 @@ public sealed class SignalRMatchNotificationService(
                 TimeControl = new TimeControlDto
                 {
                     Preset = gameState.TimeControl.Preset.ToString(),
+                    IsUntimed = gameState.TimeControl.IsUntimed,
+                    ClockMode = gameState.TimeControl.IsUntimed ? "countup" : "countdown",
                     InitialTimeMs = gameState.TimeControl.InitialTimeMs,
                     IncrementMs = gameState.TimeControl.IncrementMs
                 },
@@ -58,6 +60,8 @@ public sealed class SignalRMatchNotificationService(
                 TimeControl = new TimeControlDto
                 {
                     Preset = gameState.TimeControl.Preset.ToString(),
+                    IsUntimed = gameState.TimeControl.IsUntimed,
+                    ClockMode = gameState.TimeControl.IsUntimed ? "countup" : "countdown",
                     InitialTimeMs = gameState.TimeControl.InitialTimeMs,
                     IncrementMs = gameState.TimeControl.IncrementMs
                 },

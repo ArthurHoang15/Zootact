@@ -6,7 +6,9 @@ import { apiService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import type { TimeControlPreset } from '@/types';
 
-const presets: [TimeControlPreset, string, string][] = [
+type MatchmakingPreset = Exclude<TimeControlPreset, 'Untimed'>;
+
+const presets: [MatchmakingPreset, string, string][] = [
     ['Blitz', 'Blitz', 'matchmaking.blitz'],
     ['Rapid', 'Rapid', 'matchmaking.rapid'],
     ['Classical', 'Classical', 'matchmaking.classical'],
@@ -18,9 +20,8 @@ export function HomePage() {
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const hydrateActiveMatch = useGameStore(state => state.hydrateActiveMatch);
-    const [showPrivatePicker, setShowPrivatePicker] = useState(false);
     const [isCreatingLobby, setIsCreatingLobby] = useState(false);
-    const [queueState, setQueueState] = useState<{ searching: boolean; timeControl: TimeControlPreset | null; position: number | null }>({
+    const [queueState, setQueueState] = useState<{ searching: boolean; timeControl: MatchmakingPreset | null; position: number | null }>({
         searching: false,
         timeControl: null,
         position: null,
@@ -53,7 +54,7 @@ export function HomePage() {
         };
     }, [hydrateActiveMatch, isAuthenticated, queueState.searching]);
 
-    async function handleQueueJoin(timeControl: TimeControlPreset) {
+    async function handleQueueJoin(timeControl: MatchmakingPreset) {
         if (!isAuthenticated) {
             window.location.hash = '#/login';
             return;
@@ -82,7 +83,7 @@ export function HomePage() {
         setQueueState({ searching: false, timeControl: null, position: null });
     }
 
-    async function handleCreateLobby(timeControl: TimeControlPreset) {
+    async function handleCreateLobby() {
         if (!isAuthenticated) {
             window.location.hash = '#/login';
             return;
@@ -91,9 +92,8 @@ export function HomePage() {
         setIsCreatingLobby(true);
 
         try {
-            const response = await apiService.createLobby({ time_control: timeControl });
+            const response = await apiService.createLobby();
             if (response.lobby) {
-                setShowPrivatePicker(false);
                 window.location.hash = `#/lobby/${response.lobby.lobby_id}`;
             }
         } catch (error) {
@@ -178,53 +178,13 @@ export function HomePage() {
                                         return;
                                     }
 
-                                    setShowPrivatePicker(true);
+                                    void handleCreateLobby();
                                 }}
+                                isLoading={isCreatingLobby}
                             >
                                 {t('home.playWithFriend')}
                             </CuteButton>
                         </div>
-
-                        {showPrivatePicker && (
-                            <motion.div
-                                className="mt-6 rounded-3xl bg-cream p-5"
-                                initial={{ opacity: 0, y: 16 }}
-                                animate={{ opacity: 1, y: 0 }}
-                            >
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div>
-                                        <h3 className="font-display text-2xl text-forest-dark">{t('lobby.pickPreset')}</h3>
-                                        <p className="mt-1 text-sm text-forest-light">{t('lobby.pickPresetHint')}</p>
-                                    </div>
-                                    <CuteButton
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setShowPrivatePicker(false)}
-                                        disabled={isCreatingLobby}
-                                    >
-                                        {t('common.cancel')}
-                                    </CuteButton>
-                                </div>
-
-                                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                                    {presets.map(([preset, title, translationKey]) => (
-                                        <Card key={preset} padding="md" className="bg-white text-center">
-                                            <h4 className="font-display text-2xl text-forest-dark">{title}</h4>
-                                            <p className="mt-2 text-sm text-forest-light">{t(translationKey)}</p>
-                                            <CuteButton
-                                                className="mt-4"
-                                                fullWidth
-                                                variant="secondary"
-                                                onClick={() => void handleCreateLobby(preset)}
-                                                isLoading={isCreatingLobby}
-                                            >
-                                                {t('lobby.createRoom')}
-                                            </CuteButton>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
                     </Card>
                 </section>
 

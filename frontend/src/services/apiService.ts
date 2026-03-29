@@ -90,7 +90,7 @@ class ApiService {
 
     // === Private Lobby ===
 
-    async createLobby(payload: CreateLobbyRequest): Promise<LobbyActionResponse> {
+    async createLobby(payload: CreateLobbyRequest = {}): Promise<LobbyActionResponse> {
         const response = await fetch(`${API_BASE}/lobbies`, {
             method: 'POST',
             headers: this.getHeaders(),

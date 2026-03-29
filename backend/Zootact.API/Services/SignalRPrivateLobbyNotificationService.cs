@@ -57,7 +57,7 @@ public sealed class SignalRPrivateLobbyNotificationService(
         return new PrivateLobbyDto
         {
             LobbyId = lobby.LobbyId.ToString(),
-            Preset = lobby.Preset.ToString(),
+            Mode = PrivateLobby.FriendlyUntimedMode,
             Host = new LobbyPlayerDto
             {
                 Id = hostUser.Id.ToString(),

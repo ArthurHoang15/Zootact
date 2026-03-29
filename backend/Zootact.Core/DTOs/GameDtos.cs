@@ -45,6 +45,12 @@ public record TimeControlDto
 {
     [JsonPropertyName("preset")]
     public required string Preset { get; init; }
+
+    [JsonPropertyName("is_untimed")]
+    public bool IsUntimed { get; init; }
+
+    [JsonPropertyName("clock_mode")]
+    public required string ClockMode { get; init; }
     
     [JsonPropertyName("initial_time_ms")]
     public int InitialTimeMs { get; init; }

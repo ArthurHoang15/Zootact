@@ -1,5 +1,3 @@
-import type { TimeControlPreset } from './game';
-
 export type LobbyRole = 'Host' | 'Guest' | 'Viewer' | 'Unknown';
 
 export interface LobbyPlayerDto {
@@ -13,7 +11,7 @@ export interface LobbyPlayerDto {
 
 export interface PrivateLobbyDto {
     lobby_id: string;
-    preset: TimeControlPreset;
+    mode: string;
     host: LobbyPlayerDto;
     guest: LobbyPlayerDto | null;
     current_user_role: LobbyRole;
@@ -23,9 +21,7 @@ export interface PrivateLobbyDto {
     can_start: boolean;
 }
 
-export interface CreateLobbyRequest {
-    time_control: TimeControlPreset;
-}
+export interface CreateLobbyRequest {}
 
 export interface LobbyActionResponse {
     success: boolean;
