@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Board, GameEndModal, MoveHistory, PlayerInfo } from '@/components/game';
+import { Board, GameEndModal, MoveHistory, PlayerInfo, RulesModal } from '@/components/game';
 import { CuteButton, LanguageSwitcher } from '@/components/ui';
 import { apiService, signalRService } from '@/services';
 import { useGameStore } from '@/stores';
@@ -25,6 +25,7 @@ export function GamePage() {
     const updateDisconnectCountdown = useGameStore(state => state.updateDisconnectCountdown);
     const [chatInput, setChatInput] = useState('');
     const [isResigning, setIsResigning] = useState(false);
+    const [isRulesOpen, setIsRulesOpen] = useState(false);
     const hasActiveBoard = Boolean(matchId && board);
 
     useEffect(() => {
@@ -119,7 +120,17 @@ export function GamePage() {
                     <button className="font-display text-2xl text-white" onClick={() => { window.location.hash = '#/'; }}>
                         Zootact
                     </button>
-                    <LanguageSwitcher />
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="flex h-11 min-w-11 items-center justify-center rounded-2xl bg-white/90 px-3 font-display text-xl text-forest-dark shadow-cute"
+                            aria-label={t('rules.helpIconLabel')}
+                            onClick={() => setIsRulesOpen(true)}
+                        >
+                            <span>?</span>
+                            <span className="ml-2 hidden text-sm font-bold md:inline">{t('rules.panelTitle')}</span>
+                        </button>
+                        <LanguageSwitcher />
+                    </div>
                 </div>
             </header>
 
@@ -237,6 +248,11 @@ export function GamePage() {
             </main>
 
             <GameEndModal onNewGame={() => { window.location.hash = '#/'; }} />
+            <RulesModal
+                open={isRulesOpen}
+                onClose={() => setIsRulesOpen(false)}
+                onOpenPage={() => { window.location.hash = '#/rules'; }}
+            />
         </div>
     );
 }

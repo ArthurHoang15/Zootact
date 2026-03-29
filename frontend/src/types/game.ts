@@ -270,8 +270,8 @@ export const TRAP_CELLS: PositionDto[] = [
 
 // Den cells
 export const DEN_CELLS: { position: PositionDto; owner: Player }[] = [
-    { position: { row: 0, col: 3 }, owner: 'Blue' },
-    { position: { row: 8, col: 3 }, owner: 'Red' },
+    { position: { row: 0, col: 3 }, owner: 'Red' },
+    { position: { row: 8, col: 3 }, owner: 'Blue' },
 ];
 
 // Helper functions

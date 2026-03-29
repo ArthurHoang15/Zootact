@@ -111,6 +111,97 @@
         "classical": "Tiêu chuẩn (30 phút)",
         "selectMode": "Chọn chế độ thời gian"
     },
+    "rules": {
+        "title": "Luật Cờ Thú",
+        "subtitle": "Phần hướng dẫn này bám đúng với luật hiện đang được áp dụng trong Zootact.",
+        "pageTitle": "Rules",
+        "pageSubtitle": "Tìm hiểu cách chơi Cờ Thú trên Zootact trước khi vào trận xếp hạng hoặc tạo phòng riêng.",
+        "pageBodyTitle": "Hướng Dẫn Luật Chơi",
+        "pageBodySubtitle": "Nội dung hiển thị theo ngôn ngữ bạn đang chọn và khớp với implementation hiện tại của game.",
+        "backToGame": "Quay lại ván đấu",
+        "backToHome": "Về trang chủ",
+        "panelTitle": "Luật chơi",
+        "panelSubtitle": "Mở nhanh trong lúc đang chơi.",
+        "panelBodyTitle": "Luật chơi hiện tại",
+        "panelBodySubtitle": "Trên desktop, khung này được mở sẵn để bạn tra cứu mà không cần rời trận.",
+        "mobileTitle": "Luật chơi",
+        "mobileBodyTitle": "Tóm tắt luật chơi",
+        "mobileBodySubtitle": "Bạn có thể mở trang Rules đầy đủ nếu muốn xem toàn bộ hướng dẫn ngoài ván đấu.",
+        "modalTitle": "Cách chơi",
+        "modalBodyTitle": "Luật cần biết khi đang chơi",
+        "modalBodySubtitle": "Chỉ hiển thị các luật thực sự cần thiết trong ván đấu. Mở trang Rules đầy đủ nếu bạn muốn xem toàn bộ hướng dẫn.",
+        "helpIconLabel": "Mở luật chơi",
+        "openModal": "Xem nhanh",
+        "openFullPage": "Mở trang Rules",
+        "expand": "Mở rộng",
+        "collapse": "Thu gọn",
+        "quickPanelSubtitle": "Những luật quan trọng nhất để bạn tra cứu nhanh trong lúc chơi.",
+        "quickPanel": {
+            "matrixSubtitle": "Tra nhanh khả năng bắt quân trên ô thường.",
+            "note": "Ngoại lệ: Voi không ăn được Chuột. Chuột chỉ ăn được Voi khi ở trên đất. Quân dưới sông và trên cạn không bắt được nhau.",
+            "summary": {
+                "0": "Mỗi quân đi 1 ô theo hàng hoặc cột.",
+                "1": "Vào hang đối thủ là thắng ngay.",
+                "2": "Chỉ Chuột được vào sông; Sư tử và Hổ được nhảy sông.",
+                "3": "Quân đứng trong bẫy địch bị giảm sức mạnh xuống 0."
+            }
+        },
+        "homeEyebrow": "Cần xem lại luật?",
+        "homeTitle": "Đọc luật trước khi vào trận",
+        "homeSubtitle": "Xem đúng các quy tắc di chuyển, bắt quân, sông, bẫy và hòa đang được game sử dụng.",
+        "quickSummaryLabel": "Tóm Tắt Nhanh",
+        "quickFacts": {
+            "0": "Mỗi quân đi 1 ô theo hàng hoặc cột, không đi chéo.",
+            "1": "Đưa quân vào hang đối thủ là thắng ngay.",
+            "2": "Chỉ Chuột được đi vào sông.",
+            "3": "Chuột trên cạn không ăn được Chuột dưới sông và Chuột dưới sông cũng không ăn được Chuột trên cạn.",
+            "4": "Ván cờ có thể hòa do đồng ý hòa, lặp lại thế cờ, luật 60 nửa nước hoặc bí."
+        },
+        "sections": {
+            "movement": {
+                "title": "Di chuyển và mục tiêu thắng",
+                "bullets": {
+                    "0": "Mọi quân đi đúng 1 ô theo 4 hướng: lên, xuống, trái hoặc phải.",
+                    "1": "Không được đứng yên, đi ra ngoài bàn cờ hoặc đi vào hang của chính mình.",
+                    "2": "Đưa một quân bất kỳ vào hang đối thủ là thắng ngay lập tức.",
+                    "3": "Bạn cũng thắng nếu đối thủ bị ăn hết quân, đầu hàng hoặc hết giờ."
+                }
+            },
+            "river": {
+                "title": "Luật ở sông",
+                "bullets": {
+                    "0": "Chỉ Chuột được đi vào sông, di chuyển trong sông và đi từ sông lên bờ.",
+                    "1": "Các quân khác đều không được bước vào ô sông.",
+                    "2": "Sư tử và Hổ được nhảy qua trọn một dải sông theo đường thẳng.",
+                    "3": "Nếu có Chuột đứng trên đường sông đó thì cú nhảy của Sư tử hoặc Hổ sẽ bị chặn."
+                }
+            },
+            "capture": {
+                "title": "Bắt quân, cấp bậc và bẫy",
+                "bullets": {
+                    "0": "Một quân chỉ bắt được quân địch khi cấp sức mạnh hiệu dụng của nó lớn hơn hoặc bằng quân bị bắt.",
+                    "1": "Voi không bao giờ bắt được Chuột.",
+                    "2": "Chuột chỉ bắt được Voi khi Chuột đang đứng trên đất; Chuột ở dưới sông thì không bắt được.",
+                    "3": "Quân ở sông không bắt được quân trên đất, và quân trên đất cũng không bắt được quân ở sông, kể cả trường hợp Chuột đối đầu Chuột giữa sông và cạn.",
+                    "4": "Quân đứng trong bẫy của đối phương sẽ bị giảm cấp sức mạnh xuống 0."
+                }
+            },
+            "endings": {
+                "title": "Điều kiện hòa và kết thúc ván",
+                "bullets": {
+                    "0": "Ván cờ hòa nếu hai bên đồng ý hòa, cùng một thế cờ lặp lại 3 lần, hoặc có 60 nửa nước liên tiếp không xảy ra bắt quân.",
+                    "1": "Nếu đến lượt mà người chơi không còn nước đi hợp lệ nào thì ván cờ hòa do bí.",
+                    "2": "Hết giờ, đầu hàng, vào hang đối thủ hoặc ăn hết quân địch đều làm ván cờ kết thúc ngay."
+                }
+            }
+        },
+        "captureMatrix": {
+            "title": "Quân nào ăn được quân nào",
+            "subtitle": "Danh sách này bám theo logic cấp bậc hiện tại của game trên ô thường. Nếu quân địch đang đứng trong bẫy thì sức mạnh của quân đó giảm xuống 0.",
+            "compactSubtitle": "Mỗi dòng cho biết quân đó có thể ăn tối đa đến đâu khi đang đứng trên ô thường.",
+            "note": "Ngoại lệ quan trọng: Voi không ăn được Chuột. Chuột chỉ ăn được Voi khi đang ở trên đất. Quân dưới sông và quân trên cạn không bắt được nhau."
+        }
+    },
     "profile": {
         "subtitle": "Xem thông tin tài khoản, theo dõi phong độ và cập nhật các thông tin cơ bản của bạn.",
         "stats": "Thống kê",

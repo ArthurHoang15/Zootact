@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ForgotPasswordPage, GamePage, HomePage, LobbyPage, LoginPage, ProfilePage, RegisterPage } from '@/pages';
+import { ForgotPasswordPage, GamePage, HomePage, LobbyPage, LoginPage, ProfilePage, RegisterPage, RulesPage } from '@/pages';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import { navigateAfterAuth, peekPostAuthRedirect, rememberPostAuthRedirect } from '@/utils';
@@ -11,6 +11,7 @@ type RouteInfo =
     | { name: 'register' }
     | { name: 'forgot-password' }
     | { name: 'profile' }
+    | { name: 'rules' }
     | { name: 'lobby'; lobbyId: string };
 
 function parseHashRoute(hash: string): RouteInfo {
@@ -32,6 +33,8 @@ function parseHashRoute(hash: string): RouteInfo {
             return { name: 'forgot-password' };
         case '#/profile':
             return { name: 'profile' };
+        case '#/rules':
+            return { name: 'rules' };
         case '#/':
         default:
             return { name: 'home' };
@@ -173,6 +176,8 @@ function App() {
             return <ForgotPasswordPage />;
         case 'profile':
             return <ProfilePage />;
+        case 'rules':
+            return <RulesPage />;
         case 'lobby':
             return <LobbyPage lobbyId={route.lobbyId} />;
         case 'home':

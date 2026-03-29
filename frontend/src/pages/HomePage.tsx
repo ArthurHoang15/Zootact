@@ -228,6 +228,27 @@ export function HomePage() {
                     </Card>
                 </section>
 
+                <section className="mt-8">
+                    <Card padding="lg" className="bg-white">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div className="max-w-2xl">
+                                <p className="text-sm font-bold uppercase tracking-[0.12em] text-sky-blue-dark">
+                                    {t('rules.homeEyebrow')}
+                                </p>
+                                <h2 className="mt-2 font-display text-3xl text-forest-dark">{t('rules.homeTitle')}</h2>
+                                <p className="mt-2 text-forest-light">{t('rules.homeSubtitle')}</p>
+                            </div>
+                            <CuteButton
+                                size="lg"
+                                variant="secondary"
+                                onClick={() => { window.location.hash = '#/rules'; }}
+                            >
+                                {t('rules.openFullPage')}
+                            </CuteButton>
+                        </div>
+                    </Card>
+                </section>
+
                 {queueState.searching && (
                     <motion.section
                         className="mt-8 rounded-3xl bg-white p-6 shadow-cute"
