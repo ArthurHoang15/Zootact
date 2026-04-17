@@ -19,7 +19,7 @@ public sealed class LobbiesController(
     [HttpPost]
     [ProducesResponseType(typeof(LobbyActionResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateLobby([FromBody] CreateLobbyRequest request)
+    public async Task<IActionResult> CreateLobby()
     {
         var userId = GetUserId();
         if (userId is null)
@@ -77,6 +77,11 @@ public sealed class LobbiesController(
         if (lobby is null)
         {
             return NotFound();
+        }
+
+        if (!lobby.IsParticipant(userId.Value))
+        {
+            return Forbid();
         }
 
         return Ok(await BuildLobbyDtoAsync(lobby, userId.Value));
@@ -240,7 +245,7 @@ public sealed class LobbiesController(
                 ? "Host"
                 : currentUserId == lobby.GuestUserId
                     ? "Guest"
-                    : "Viewer",
+                    : "Unknown",
             CountdownActive = lobby.CountdownActive,
             CountdownEndAt = lobby.CountdownEndAt,
             CountdownSecondsRemaining = lobby.CountdownEndAt.HasValue

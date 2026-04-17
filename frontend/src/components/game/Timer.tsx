@@ -27,17 +27,19 @@ export function Timer({ player, className = '' }: TimerProps) {
   );
   
   // Timer tick logic
-  const lastTickRef = useRef<number>(Date.now());
+  const lastTickRef = useRef<number | null>(null);
   
   useEffect(() => {
     if (!isActive) {
       lastTickRef.current = Date.now();
       return;
     }
+
+    lastTickRef.current = Date.now();
     
     const interval = setInterval(() => {
       const now = Date.now();
-      const delta = now - lastTickRef.current;
+      const delta = now - (lastTickRef.current ?? now);
       lastTickRef.current = now;
       tickTime(delta);
     }, 100);

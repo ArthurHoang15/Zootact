@@ -1,4 +1,4 @@
-export type LobbyRole = 'Host' | 'Guest' | 'Viewer' | 'Unknown';
+export type LobbyRole = 'Host' | 'Guest' | 'Unknown';
 
 export interface LobbyPlayerDto {
     id: string;
@@ -20,8 +20,6 @@ export interface PrivateLobbyDto {
     countdown_seconds_remaining: number;
     can_start: boolean;
 }
-
-export interface CreateLobbyRequest {}
 
 export interface LobbyActionResponse {
     success: boolean;

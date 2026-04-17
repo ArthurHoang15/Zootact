@@ -1,7 +1,6 @@
 import { useAuthStore } from '@/stores';
 import type {
     ActiveMatchResponse,
-    CreateLobbyRequest,
     LobbyActionResponse,
     MatchAnalysisResponse,
     MatchmakingResponse,
@@ -90,11 +89,10 @@ class ApiService {
 
     // === Private Lobby ===
 
-    async createLobby(payload: CreateLobbyRequest = {}): Promise<LobbyActionResponse> {
+    async createLobby(): Promise<LobbyActionResponse> {
         const response = await fetch(`${API_BASE}/lobbies`, {
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify(payload),
         });
         return this.handleResponse(response);
     }

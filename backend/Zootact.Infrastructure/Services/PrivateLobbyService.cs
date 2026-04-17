@@ -72,6 +72,12 @@ public sealed class PrivateLobbyService(
             return lobby;
         }
 
+        if (lobby.GuestUserId == userId)
+        {
+            await privateLobbyRepository.SetPlayerActiveLobbyAsync(userId, lobbyId);
+            return lobby;
+        }
+
         if (lobby.GuestUserId.HasValue && lobby.GuestUserId.Value != userId)
         {
             throw new InvalidOperationException("Lobby is already full.");

@@ -59,6 +59,20 @@ public sealed class PrivateLobbyServiceTests
     }
 
     [Fact]
+    public async Task GuestReopenPreservesExistingReadyState()
+    {
+        var fixture = new PrivateLobbyFixture();
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
+        await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
+        await fixture.Service.SetGuestReadyAsync(lobby.LobbyId, fixture.GuestId, false);
+
+        var reopenedLobby = await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
+
+        Assert.Equal(fixture.GuestId, reopenedLobby.GuestUserId);
+        Assert.False(reopenedLobby.GuestReady);
+    }
+
+    [Fact]
     public async Task StartCountdown_RequiresGuestToJoin()
     {
         var fixture = new PrivateLobbyFixture();

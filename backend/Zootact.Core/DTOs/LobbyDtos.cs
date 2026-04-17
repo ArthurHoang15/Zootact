@@ -65,9 +65,6 @@ public record LobbyActionResponse
     public PrivateLobbyDto? Lobby { get; init; }
 }
 
-public record CreateLobbyRequest
-{ }
-
 public record LobbyReadyRequest
 {
     [JsonPropertyName("ready")]

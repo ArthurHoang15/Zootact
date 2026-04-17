@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Avatar, Card, CuteButton, CuteInput, LanguageSwitcher } from '@/components/ui';
 import { apiService } from '@/services';
 import { useAuthStore } from '@/stores';
 import type { MyProfileDto, RecentProfileMatchDto, UserStatsDto } from '@/types';
+import type { TFunction } from 'i18next';
 
 const emptyStats: UserStatsDto = {
     total_games: 0,
@@ -52,6 +53,25 @@ function formatMatchDate(value: string | null) {
         month: 'short',
         year: 'numeric',
     }).format(new Date(value));
+}
+
+function formatMatchTimeControl(value: string, t: TFunction) {
+    switch (value) {
+        case 'Blitz':
+            return t('matchmaking.blitz');
+        case 'Rapid':
+            return t('matchmaking.rapid');
+        case 'Classical':
+            return t('matchmaking.classical');
+        case 'Untimed':
+            return t('lobby.untimedMode');
+        default:
+            return value;
+    }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
 }
 
 function outcomeClasses(outcome: RecentProfileMatchDto['outcome']) {
@@ -106,9 +126,9 @@ export function ProfilePage() {
                 setProfile(response);
                 setUsername(response.user.username);
                 setUser(response.user);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (!cancelled) {
-                    setError(err.message ?? t('common.error'));
+                    setError(getErrorMessage(err, t('common.error')));
                 }
             } finally {
                 if (!cancelled) {
@@ -140,8 +160,8 @@ export function ProfilePage() {
             setUsername(response.user.username);
             setUser(response.user);
             setSuccess(t('profile.saveSuccess'));
-        } catch (err: any) {
-            setError(err.message ?? t('common.error'));
+        } catch (err: unknown) {
+            setError(getErrorMessage(err, t('common.error')));
         } finally {
             setIsSaving(false);
         }
@@ -326,7 +346,7 @@ export function ProfilePage() {
                                                     <div>
                                                         <p className="font-display text-xl text-forest-dark">{match.opponent_username}</p>
                                                         <p className="text-sm text-forest-light">
-                                                            {match.time_control} · {formatMatchDate(match.ended_at)}
+                                                            {formatMatchTimeControl(match.time_control, t)} · {formatMatchDate(match.ended_at)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -379,3 +399,4 @@ export function ProfilePage() {
 }
 
 export default ProfilePage;
+
