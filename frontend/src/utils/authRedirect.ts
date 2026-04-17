@@ -1,22 +1,35 @@
-const POST_AUTH_REDIRECT_KEY = 'postAuthRedirectHash';
+import { normalizeStoredRedirectPath } from '@/router/legacyHash';
+import { navigateTo } from '@/router/navigation';
+import { routes } from '@/router/routes';
 
-export function rememberPostAuthRedirect(hash: string): void {
-    window.sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, hash);
+const POST_AUTH_REDIRECT_KEY = 'postAuthRedirectPath';
+const LEGACY_POST_AUTH_REDIRECT_KEY = 'postAuthRedirectHash';
+
+function getStoredRedirect(): string | null {
+    return window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY)
+        ?? window.sessionStorage.getItem(LEGACY_POST_AUTH_REDIRECT_KEY);
+}
+
+export function rememberPostAuthRedirect(path: string): void {
+    window.sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, normalizeStoredRedirectPath(path));
+    window.sessionStorage.removeItem(LEGACY_POST_AUTH_REDIRECT_KEY);
 }
 
 export function peekPostAuthRedirect(): string | null {
-    return window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
+    const redirectPath = getStoredRedirect();
+    return redirectPath ? normalizeStoredRedirectPath(redirectPath) : null;
 }
 
 export function consumePostAuthRedirect(): string | null {
-    const redirectHash = window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
-    if (redirectHash) {
+    const redirectPath = getStoredRedirect();
+    if (redirectPath) {
         window.sessionStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+        window.sessionStorage.removeItem(LEGACY_POST_AUTH_REDIRECT_KEY);
     }
 
-    return redirectHash;
+    return redirectPath ? normalizeStoredRedirectPath(redirectPath) : null;
 }
 
-export function navigateAfterAuth(defaultHash = '#/'): void {
-    window.location.hash = consumePostAuthRedirect() ?? defaultHash;
+export function navigateAfterAuth(defaultPath = routes.home): void {
+    navigateTo(consumePostAuthRedirect() ?? defaultPath, { replace: true });
 }

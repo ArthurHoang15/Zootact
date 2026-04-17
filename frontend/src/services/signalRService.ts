@@ -1,4 +1,6 @@
 import * as signalR from '@microsoft/signalr';
+import { navigateTo } from '@/router/navigation';
+import { routes } from '@/router/routes';
 import type {
     ChatMessageDto,
     GameEndedDto,
@@ -185,7 +187,7 @@ class SignalRService {
             gameStore.setConnected(true);
             this.currentLobbyId = null;
             useLobbyStore.getState().clearLobby();
-            window.location.hash = '#/game';
+            navigateTo(routes.game);
         });
 
         this.connection.on('OnMoveMade', (data: MoveMadeDto) => {

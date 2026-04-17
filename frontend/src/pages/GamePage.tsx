@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Board, GameEndModal, MoveHistory, PlayerInfo, RulesModal } from '@/components/game';
 import { CuteButton, LanguageSwitcher } from '@/components/ui';
+import { routes } from '@/router/routes';
 import { apiService, signalRService } from '@/services';
 import { useGameStore } from '@/stores';
 import { sanitizeText } from '@/utils';
@@ -10,6 +12,7 @@ import type { PositionDto } from '@/types';
 
 export function GamePage() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const matchId = useGameStore(state => state.matchId);
     const board = useGameStore(state => state.board);
     const chatMessages = useGameStore(state => state.chatMessages);
@@ -117,7 +120,7 @@ export function GamePage() {
         <div className="min-h-screen bg-cream">
             <header className="bg-gradient-to-r from-candy-green to-candy-green-light shadow-cute">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-                    <button className="font-display text-2xl text-white" onClick={() => { window.location.hash = '#/'; }}>
+                    <button className="font-display text-2xl text-white" onClick={() => navigate(routes.home)}>
                         Zootact
                     </button>
                     <div className="flex items-center gap-2">
@@ -247,11 +250,11 @@ export function GamePage() {
                 </aside>
             </main>
 
-            <GameEndModal onNewGame={() => { window.location.hash = '#/'; }} />
+            <GameEndModal onNewGame={() => navigate(routes.home)} />
             <RulesModal
                 open={isRulesOpen}
                 onClose={() => setIsRulesOpen(false)}
-                onOpenPage={() => { window.location.hash = '#/rules'; }}
+                onOpenPage={() => navigate(routes.rules)}
             />
         </div>
     );

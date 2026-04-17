@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, LanguageSwitcher } from '@/components/ui';
+import { buildLobbyPath, routes } from '@/router/routes';
 import { apiService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import type { TimeControlPreset } from '@/types';
@@ -16,6 +18,7 @@ const presets: [MatchmakingPreset, string, string][] = [
 
 export function HomePage() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
@@ -42,7 +45,7 @@ export function HomePage() {
 
                 hydrateActiveMatch(activeMatch);
                 setQueueState({ searching: false, timeControl: null, position: null });
-                window.location.hash = '#/game';
+                navigate(routes.game);
             }).catch(error => {
                 console.error('Failed to poll active match', error);
             });
@@ -52,11 +55,11 @@ export function HomePage() {
             cancelled = true;
             window.clearInterval(interval);
         };
-    }, [hydrateActiveMatch, isAuthenticated, queueState.searching]);
+    }, [hydrateActiveMatch, isAuthenticated, navigate, queueState.searching]);
 
     async function handleQueueJoin(timeControl: MatchmakingPreset) {
         if (!isAuthenticated) {
-            window.location.hash = '#/login';
+            navigate(routes.login);
             return;
         }
 
@@ -67,7 +70,7 @@ export function HomePage() {
                 hydrateActiveMatch(activeMatch);
             }
             setQueueState({ searching: false, timeControl: null, position: null });
-            window.location.hash = '#/game';
+            navigate(routes.game);
             return;
         }
 
@@ -85,7 +88,7 @@ export function HomePage() {
 
     async function handleCreateLobby() {
         if (!isAuthenticated) {
-            window.location.hash = '#/login';
+            navigate(routes.login);
             return;
         }
 
@@ -94,7 +97,7 @@ export function HomePage() {
         try {
             const response = await apiService.createLobby();
             if (response.lobby) {
-                window.location.hash = `#/lobby/${response.lobby.lobby_id}`;
+                navigate(buildLobbyPath(response.lobby.lobby_id));
             }
         } catch (error) {
             console.error('Failed to create lobby', error);
@@ -118,7 +121,7 @@ export function HomePage() {
                             <>
                                 <button
                                     className="flex items-center gap-3 rounded-2xl bg-white/90 px-3 py-2 text-left text-sm font-bold text-forest-dark transition hover:bg-white"
-                                    onClick={() => { window.location.hash = '#/profile'; }}
+                                    onClick={() => navigate(routes.profile)}
                                 >
                                     <Avatar
                                         src={user?.avatar_url}
@@ -132,7 +135,7 @@ export function HomePage() {
                                 </CuteButton>
                             </>
                         ) : (
-                            <CuteButton size="sm" variant="primary" onClick={() => { window.location.hash = '#/login'; }}>
+                            <CuteButton size="sm" variant="primary" onClick={() => navigate(routes.login)}>
                                 {t('auth.loginButton')}
                             </CuteButton>
                         )}
@@ -174,7 +177,7 @@ export function HomePage() {
                                 variant="accent"
                                 onClick={() => {
                                     if (!isAuthenticated) {
-                                        window.location.hash = '#/login';
+                                        navigate(routes.login);
                                         return;
                                     }
 
@@ -201,7 +204,7 @@ export function HomePage() {
                             <CuteButton
                                 size="lg"
                                 variant="secondary"
-                                onClick={() => { window.location.hash = '#/rules'; }}
+                                onClick={() => navigate(routes.rules)}
                             >
                                 {t('rules.openFullPage')}
                             </CuteButton>

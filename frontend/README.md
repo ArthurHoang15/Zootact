@@ -1,3 +1,24 @@
+# Frontend
+
+## History routing deployment checklist
+
+This app uses clean URLs via `BrowserRouter`, for example:
+
+- `/profile`
+- `/rules`
+- `/lobby/:id`
+
+For production hosting, the frontend host must rewrite all non-asset client routes to `index.html`.
+
+Checklist:
+
+- Rewrite frontend routes like `/profile`, `/rules`, `/lobby/*`, `/game`, `/login` to `index.html`
+- Do not rewrite real static assets such as `/assets/*`, `/favicon.ico`, or files with extensions
+- Keep backend traffic separate:
+  - frontend host serves the SPA
+  - backend continues to handle `/api/*` and `/game-hub`
+- Confirm a hard refresh on `/profile`, `/rules`, and `/lobby/:id` does not return `404`
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

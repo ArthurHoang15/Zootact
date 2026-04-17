@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ForgotPasswordPage, GamePage, HomePage, LobbyPage, LoginPage, ProfilePage, RegisterPage, RulesPage } from '@/pages';
+import { EmailLinkPage } from '@/pages/auth/EmailLinkPage';
+import { buildLobbyPath, isAuthRoute, routes } from '@/router/routes';
+import { registerNavigator, unregisterNavigator } from '@/router/navigation';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import { navigateAfterAuth, peekPostAuthRedirect, rememberPostAuthRedirect } from '@/utils';
@@ -12,81 +16,72 @@ type RouteInfo =
     | { name: 'forgot-password' }
     | { name: 'profile' }
     | { name: 'rules' }
+    | { name: 'email-link' }
     | { name: 'lobby'; lobbyId: string };
 
-function parseHashRoute(hash: string): RouteInfo {
-    const normalizedHash = hash || '#/';
-
-    if (normalizedHash.startsWith('#/lobby/')) {
-        const lobbyId = normalizedHash.slice('#/lobby/'.length);
+function parsePathRoute(pathname: string): RouteInfo {
+    if (pathname.startsWith('/lobby/')) {
+        const lobbyId = decodeURIComponent(pathname.slice('/lobby/'.length));
         return { name: 'lobby', lobbyId };
     }
 
-    switch (normalizedHash) {
-        case '#/game':
+    switch (pathname) {
+        case '/game':
             return { name: 'game' };
-        case '#/login':
+        case '/login':
             return { name: 'login' };
-        case '#/register':
+        case '/register':
             return { name: 'register' };
-        case '#/forgot-password':
+        case '/forgot-password':
             return { name: 'forgot-password' };
-        case '#/profile':
+        case '/profile':
             return { name: 'profile' };
-        case '#/rules':
+        case '/rules':
             return { name: 'rules' };
-        case '#/':
+        case '/auth/email-link':
+            return { name: 'email-link' };
+        case '/':
         default:
             return { name: 'home' };
     }
 }
 
-function useHashRouter() {
-    const [route, setRoute] = useState<RouteInfo>(() => parseHashRoute(window.location.hash || '#/'));
-
-    useEffect(() => {
-        const handleHashChange = () => setRoute(parseHashRoute(window.location.hash || '#/'));
-        window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
-    }, []);
-
-    return route;
+function LobbyRoute() {
+    const { lobbyId = '' } = useParams<{ lobbyId: string }>();
+    return <LobbyPage lobbyId={lobbyId} />;
 }
 
-function App() {
-    const route = useHashRouter();
+function AppShell() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const route = useMemo(() => parsePathRoute(location.pathname), [location.pathname]);
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const firebaseToken = useAuthStore(state => state.firebaseToken);
     const authBootstrapComplete = useAuthStore(state => state.authBootstrapComplete);
-    const completeLoginWithLink = useAuthStore(state => state.completeLoginWithLink);
     const initializeAuth = useAuthStore(state => state.initializeAuth);
     const hydrateActiveMatch = useGameStore(state => state.hydrateActiveMatch);
     const resetGame = useGameStore(state => state.resetGame);
     const matchId = useGameStore(state => state.matchId);
 
     useEffect(() => {
+        registerNavigator(navigate);
+        return () => unregisterNavigator(navigate);
+    }, [navigate]);
+
+    useEffect(() => {
         return initializeAuth();
     }, [initializeAuth]);
 
     useEffect(() => {
-        if (window.location.href.includes('apiKey') && window.location.href.includes('oobCode')) {
-            const email = window.localStorage.getItem('emailForSignIn');
-            if (email) {
-                void completeLoginWithLink(email, window.location.href)
-                    .then(() => navigateAfterAuth())
-                    .catch(error => {
-                        console.error('Email link sign-in failed', error);
-                    });
-            }
+        if (!authBootstrapComplete) {
+            return;
         }
-    }, [completeLoginWithLink]);
 
-    useEffect(() => {
         if (route.name === 'lobby' && !isAuthenticated) {
-            rememberPostAuthRedirect(`#/lobby/${route.lobbyId}`);
-            window.location.hash = '#/login';
+            rememberPostAuthRedirect(buildLobbyPath(route.lobbyId));
+            navigate(routes.login, { replace: true });
         }
-    }, [isAuthenticated, route]);
+    }, [authBootstrapComplete, isAuthenticated, navigate, route]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -98,10 +93,10 @@ function App() {
             return;
         }
 
-        if (route.name === 'login' || route.name === 'register' || route.name === 'forgot-password' || route.name === 'home') {
+        if (route.name === 'home' || isAuthRoute(location.pathname)) {
             navigateAfterAuth();
         }
-    }, [isAuthenticated, route.name]);
+    }, [isAuthenticated, location.pathname, route.name]);
 
     useEffect(() => {
         let disposed = false;
@@ -129,7 +124,7 @@ function App() {
             if (!activeMatch) {
                 if (route.name === 'game') {
                     resetGame();
-                    window.location.hash = '#/';
+                    navigate(routes.home, { replace: true });
                     return;
                 }
 
@@ -139,13 +134,13 @@ function App() {
                         return;
                     }
 
-                    window.location.hash = `#/lobby/${activeLobby.lobby_id}`;
+                    navigate(buildLobbyPath(activeLobby.lobby_id), { replace: true });
                 }
                 return;
             }
 
             hydrateActiveMatch(activeMatch);
-            window.location.hash = '#/game';
+            navigate(routes.game, { replace: true });
         }
 
         void bootstrapLiveSession();
@@ -153,7 +148,7 @@ function App() {
         return () => {
             disposed = true;
         };
-    }, [authBootstrapComplete, firebaseToken, hydrateActiveMatch, isAuthenticated, resetGame, route]);
+    }, [authBootstrapComplete, firebaseToken, hydrateActiveMatch, isAuthenticated, navigate, resetGame, route]);
 
     useEffect(() => {
         if (!matchId || !isAuthenticated || !signalRService.isConnected()) {
@@ -165,25 +160,24 @@ function App() {
         });
     }, [isAuthenticated, matchId]);
 
-    switch (route.name) {
-        case 'game':
-            return <GamePage />;
-        case 'login':
-            return <LoginPage />;
-        case 'register':
-            return <RegisterPage />;
-        case 'forgot-password':
-            return <ForgotPasswordPage />;
-        case 'profile':
-            return <ProfilePage />;
-        case 'rules':
-            return <RulesPage />;
-        case 'lobby':
-            return <LobbyPage lobbyId={route.lobbyId} />;
-        case 'home':
-        default:
-            return <HomePage />;
-    }
+    return (
+        <Routes>
+            <Route path={routes.home} element={<HomePage />} />
+            <Route path={routes.game} element={<GamePage />} />
+            <Route path={routes.login} element={<LoginPage />} />
+            <Route path={routes.register} element={<RegisterPage />} />
+            <Route path={routes.forgotPassword} element={<ForgotPasswordPage />} />
+            <Route path={routes.profile} element={<ProfilePage />} />
+            <Route path={routes.rules} element={<RulesPage />} />
+            <Route path={routes.emailLink} element={<EmailLinkPage />} />
+            <Route path="/lobby/:lobbyId" element={<LobbyRoute />} />
+            <Route path="*" element={<Navigate to={routes.home} replace />} />
+        </Routes>
+    );
+}
+
+function App() {
+    return <AppShell />;
 }
 
 export default App;

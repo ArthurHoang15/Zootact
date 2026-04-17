@@ -1,8 +1,10 @@
 ﻿import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, CuteInput, LanguageSwitcher } from '@/components/ui';
 import { apiService } from '@/services';
+import { routes } from '@/router/routes';
 import { useAuthStore } from '@/stores';
 import type { MyProfileDto, RecentProfileMatchDto, UserStatsDto } from '@/types';
 import type { TFunction } from 'i18next';
@@ -94,6 +96,7 @@ function matchTypeClasses(matchType: RecentProfileMatchDto['match_type']) {
 
 export function ProfilePage() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
     const authUser = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
@@ -107,7 +110,7 @@ export function ProfilePage() {
 
     useEffect(() => {
         if (!isAuthenticated) {
-            window.location.hash = '#/login';
+            navigate(routes.login, { replace: true });
             return;
         }
 
@@ -142,7 +145,7 @@ export function ProfilePage() {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, setUser, t]);
+    }, [isAuthenticated, navigate, setUser, t]);
 
     async function handleSaveProfile() {
         if (!username.trim()) {
@@ -181,7 +184,7 @@ export function ProfilePage() {
             <header className="relative overflow-hidden bg-gradient-to-br from-sky-blue via-candy-green to-cream px-4 py-8">
                 <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
                     <div>
-                        <button className="text-sm font-bold text-white/90" onClick={() => { window.location.hash = '#/'; }}>
+                        <button className="text-sm font-bold text-white/90" onClick={() => navigate(routes.home)}>
                             {t('profile.goHome')}
                         </button>
                         <h1 className="mt-3 font-display text-5xl text-white">{t('nav.profile')}</h1>

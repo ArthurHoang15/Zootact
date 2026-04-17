@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, LanguageSwitcher } from '@/components/ui';
+import { buildLobbyPath, routes } from '@/router/routes';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useLobbyStore } from '@/stores';
 
@@ -10,11 +12,12 @@ interface LobbyPageProps {
 }
 
 function buildInviteLink(lobbyId: string) {
-    return `${window.location.origin}${window.location.pathname}#/lobby/${lobbyId}`;
+    return `${window.location.origin}${buildLobbyPath(lobbyId)}`;
 }
 
 export function LobbyPage({ lobbyId }: LobbyPageProps) {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const firebaseToken = useAuthStore(state => state.firebaseToken);
     const lobby = useLobbyStore(state => state.lobby);
     const isLoading = useLobbyStore(state => state.isLoading);
@@ -88,8 +91,8 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
         }
 
         clearLobby();
-        window.location.hash = '#/';
-    }, [clearLobby, closedReason]);
+        navigate(routes.home, { replace: true });
+    }, [clearLobby, closedReason, navigate]);
 
     useEffect(() => {
         if (!lobby?.countdown_active || !lobby.countdown_end_at) {
@@ -145,7 +148,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
             console.warn('Failed to leave lobby group', err);
         } finally {
             clearLobby();
-            window.location.hash = '#/';
+            navigate(routes.home, { replace: true });
             setPendingAction(null);
         }
     }

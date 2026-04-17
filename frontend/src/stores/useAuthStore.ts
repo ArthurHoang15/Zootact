@@ -14,6 +14,7 @@ import {
     signInWithEmailLink,
     onIdTokenChanged
 } from 'firebase/auth';
+import { routes } from '@/router/routes';
 import type { UserDto } from '@/types';
 
 interface AuthState {
@@ -51,6 +52,10 @@ let authStateUnsubscribe: (() => void) | null = null;
 let authStateRequestId = 0;
 let inflightUserToken: string | null = null;
 let inflightUserPromise: Promise<UserDto> | null = null;
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown authentication error';
+}
 
 function delay(ms: number): Promise<void> {
     return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -115,8 +120,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
                         set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
-                    } catch (err: any) {
-                        set({ error: err.message });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err) });
                         throw err;
                     } finally {
                         set({ isLoading: false });
@@ -131,8 +136,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
                         set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
-                    } catch (err: any) {
-                        set({ error: err.message });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err) });
                         throw err;
                     } finally {
                         set({ isLoading: false });
@@ -147,8 +152,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         const token = await result.user.getIdToken();
                         const user = await fetchCurrentUser(token);
                         set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
-                    } catch (err: any) {
-                        set({ error: err.message });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err) });
                         throw err;
                     } finally {
                         set({ isLoading: false });
@@ -159,14 +164,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     set({ isLoading: true, error: null });
                     try {
                         const actionCodeSettings = {
-                            // Validate this URL in Firebase Console
-                            url: window.location.origin + '/#/finishSignUp',
+                            url: `${window.location.origin}${routes.emailLink}`,
                             handleCodeInApp: true,
                         };
                         await sendSignInLinkToEmail(auth, email, actionCodeSettings);
                         window.localStorage.setItem('emailForSignIn', email);
-                    } catch (err: any) {
-                        set({ error: err.message });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err) });
                         throw err;
                     } finally {
                         set({ isLoading: false });
@@ -184,8 +188,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                             window.localStorage.removeItem('emailForSignIn');
                             set({ firebaseToken: token, user, isAuthenticated: true, authBootstrapComplete: true });
                         }
-                    } catch (err: any) {
-                        set({ error: err.message });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err) });
                         throw err;
                     } finally {
                         set({ isLoading: false });
@@ -197,8 +201,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     try {
                         await signOut(auth);
                         set({ ...initialState, isLoading: false, authBootstrapComplete: true });
-                    } catch (err: any) {
-                        set({ error: err.message, isLoading: false });
+                    } catch (err: unknown) {
+                        set({ error: getErrorMessage(err), isLoading: false });
                     }
                 },
 
@@ -238,7 +242,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                                 authBootstrapComplete: true,
                                 error: null,
                             });
-                        } catch (err: any) {
+                        } catch (err: unknown) {
                             if (requestId !== authStateRequestId) {
                                 return;
                             }
@@ -246,7 +250,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                             set({
                                 ...initialState,
                                 authBootstrapComplete: true,
-                                error: err.message,
+                                error: getErrorMessage(err),
                             });
                         }
                     });
