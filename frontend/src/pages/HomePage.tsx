@@ -143,7 +143,7 @@ export function HomePage() {
             <main className="mx-auto max-w-5xl px-4 py-12">
                 <section className="grid gap-6 md:grid-cols-3">
                     {presets.map(([preset, title, translationKey]) => (
-                        <Card key={preset} hover padding="lg" className="text-center">
+                        <Card key={preset} padding="lg" className="text-center">
                             <h2 className="font-display text-2xl text-forest-dark">{title}</h2>
                             <p className="mb-4 mt-2 text-sm text-forest-light">{t(translationKey)}</p>
                             <CuteButton
