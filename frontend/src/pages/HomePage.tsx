@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, LanguageSwitcher } from '@/components/ui';
 import { buildLobbyPath, routes } from '@/router/routes';
+import { isBackendUnavailableError } from '@/services/apiErrors';
 import { apiService } from '@/services';
 import { useAuthStore, useGameStore } from '@/stores';
 import type { TimeControlPreset } from '@/types';
@@ -16,10 +17,16 @@ const presets: [MatchmakingPreset, string, string][] = [
     ['Classical', 'Classical', 'matchmaking.classical'],
 ];
 
+function getErrorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error ? error.message : fallback;
+}
+
 export function HomePage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+    const backendStatus = useAuthStore(state => state.backendStatus);
+    const markBackendDegraded = useAuthStore(state => state.markBackendDegraded);
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const hydrateActiveMatch = useGameStore(state => state.hydrateActiveMatch);
@@ -47,6 +54,11 @@ export function HomePage() {
                 setQueueState({ searching: false, timeControl: null, position: null });
                 navigate(routes.game);
             }).catch(error => {
+                if (isBackendUnavailableError(error)) {
+                    markBackendDegraded(error.message || t('status.degradedBody'));
+                    return;
+                }
+
                 console.error('Failed to poll active match', error);
             });
         }, 1000);
@@ -55,38 +67,64 @@ export function HomePage() {
             cancelled = true;
             window.clearInterval(interval);
         };
-    }, [hydrateActiveMatch, isAuthenticated, navigate, queueState.searching]);
+    }, [hydrateActiveMatch, isAuthenticated, markBackendDegraded, navigate, queueState.searching, t]);
 
     async function handleQueueJoin(timeControl: MatchmakingPreset) {
+        if (backendStatus !== 'healthy') {
+            return;
+        }
+
         if (!isAuthenticated) {
             navigate(routes.login);
             return;
         }
 
-        const result = await apiService.joinQueue(timeControl);
-        if (result.match_found) {
-            const activeMatch = await apiService.getActiveMatch();
-            if (activeMatch) {
-                hydrateActiveMatch(activeMatch);
+        try {
+            const result = await apiService.joinQueue(timeControl);
+            if (result.match_found) {
+                const activeMatch = await apiService.getActiveMatch();
+                if (activeMatch) {
+                    hydrateActiveMatch(activeMatch);
+                }
+                setQueueState({ searching: false, timeControl: null, position: null });
+                navigate(routes.game);
+                return;
             }
-            setQueueState({ searching: false, timeControl: null, position: null });
-            navigate(routes.game);
-            return;
-        }
 
-        setQueueState({
-            searching: true,
-            timeControl,
-            position: result.queue_position ?? null,
-        });
+            setQueueState({
+                searching: true,
+                timeControl,
+                position: result.queue_position ?? null,
+            });
+        } catch (error) {
+            if (isBackendUnavailableError(error)) {
+                markBackendDegraded(getErrorMessage(error, t('status.degradedBody')));
+                return;
+            }
+
+            console.error('Failed to join queue', error);
+        }
     }
 
     async function handleQueueCancel() {
-        await apiService.leaveQueue();
-        setQueueState({ searching: false, timeControl: null, position: null });
+        try {
+            await apiService.leaveQueue();
+            setQueueState({ searching: false, timeControl: null, position: null });
+        } catch (error) {
+            if (isBackendUnavailableError(error)) {
+                markBackendDegraded(getErrorMessage(error, t('status.degradedBody')));
+                return;
+            }
+
+            console.error('Failed to leave queue', error);
+        }
     }
 
     async function handleCreateLobby() {
+        if (backendStatus !== 'healthy') {
+            return;
+        }
+
         if (!isAuthenticated) {
             navigate(routes.login);
             return;
@@ -100,6 +138,11 @@ export function HomePage() {
                 navigate(buildLobbyPath(response.lobby.lobby_id));
             }
         } catch (error) {
+            if (isBackendUnavailableError(error)) {
+                markBackendDegraded(getErrorMessage(error, t('status.degradedBody')));
+                return;
+            }
+
             console.error('Failed to create lobby', error);
             alert(error instanceof Error ? error.message : t('common.error'));
         } finally {
@@ -153,6 +196,7 @@ export function HomePage() {
                                 fullWidth
                                 variant={queueState.timeControl === preset ? 'accent' : 'primary'}
                                 onClick={() => void handleQueueJoin(preset)}
+                                disabled={backendStatus !== 'healthy'}
                             >
                                 {queueState.searching && queueState.timeControl === preset
                                     ? t('matchmaking.searching')
@@ -184,6 +228,7 @@ export function HomePage() {
                                     void handleCreateLobby();
                                 }}
                                 isLoading={isCreatingLobby}
+                                disabled={backendStatus !== 'healthy'}
                             >
                                 {t('home.playWithFriend')}
                             </CuteButton>
@@ -223,7 +268,7 @@ export function HomePage() {
                             {queueState.position ? `Queue position: ${queueState.position}` : t('game.waiting')}
                         </p>
                         <div className="mt-4">
-                            <CuteButton variant="danger" onClick={() => void handleQueueCancel()}>
+                            <CuteButton variant="danger" onClick={() => void handleQueueCancel()} disabled={backendStatus !== 'healthy'}>
                                 {t('matchmaking.cancel')}
                             </CuteButton>
                         </div>

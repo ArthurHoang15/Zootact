@@ -2,6 +2,7 @@ using FirebaseAdmin.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
+using Zootact.API.Services;
 using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure.Data.Entities;
 
@@ -168,9 +169,13 @@ public class FirebaseAuthMiddleware
             if (user is not null)
             {
                 var relinked = user.FirebaseUid != firebaseUid;
+                var now = DateTimeOffset.UtcNow;
                 user.FirebaseUid = firebaseUid;
                 user.AvatarUrl = photoUrl;
-                user.LastLoginAt = DateTimeOffset.UtcNow;
+                if (LastLoginTracker.ShouldUpdate(context.Request.Path.Value, user.LastLoginAt, now))
+                {
+                    user.LastLoginAt = now;
+                }
                 await EnsureUserStatsExistsAsync(dbContext, user.Id, context.RequestAborted);
 
                 try

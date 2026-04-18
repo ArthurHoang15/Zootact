@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, CuteInput, LanguageSwitcher } from '@/components/ui';
+import { isBackendUnavailableError } from '@/services/apiErrors';
 import { apiService } from '@/services';
 import { routes } from '@/router/routes';
 import { useAuthStore } from '@/stores';
@@ -98,6 +99,8 @@ export function ProfilePage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+    const backendStatus = useAuthStore(state => state.backendStatus);
+    const markBackendDegraded = useAuthStore(state => state.markBackendDegraded);
     const authUser = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const setUser = useAuthStore(state => state.setUser);
@@ -131,6 +134,9 @@ export function ProfilePage() {
                 setUser(response.user);
             } catch (err: unknown) {
                 if (!cancelled) {
+                    if (isBackendUnavailableError(err)) {
+                        markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+                    }
                     setError(getErrorMessage(err, t('common.error')));
                 }
             } finally {
@@ -145,7 +151,7 @@ export function ProfilePage() {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, navigate, setUser, t]);
+    }, [isAuthenticated, markBackendDegraded, navigate, setUser, t]);
 
     async function handleSaveProfile() {
         if (!username.trim()) {
@@ -164,6 +170,9 @@ export function ProfilePage() {
             setUser(response.user);
             setSuccess(t('profile.saveSuccess'));
         } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
             setError(getErrorMessage(err, t('common.error')));
         } finally {
             setIsSaving(false);
@@ -251,7 +260,7 @@ export function ProfilePage() {
                                     {error && <p className="text-sm font-bold text-player-red">{error}</p>}
                                     {success && <p className="text-sm font-bold text-candy-green-dark">{success}</p>}
                                     <div className="flex gap-3">
-                                        <CuteButton onClick={() => void handleSaveProfile()} isLoading={isSaving}>
+                                        <CuteButton onClick={() => void handleSaveProfile()} isLoading={isSaving} disabled={backendStatus !== 'healthy'}>
                                             {t('common.save')}
                                         </CuteButton>
                                         <CuteButton

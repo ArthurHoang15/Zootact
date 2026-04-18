@@ -16,6 +16,12 @@ import type {
 import { useGameStore, useLobbyStore } from '@/stores';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+type ConnectFailureReason = 'unauthorized' | 'unavailable';
+
+interface ConnectResult {
+    connected: boolean;
+    reason?: ConnectFailureReason;
+}
 
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
@@ -23,7 +29,7 @@ class SignalRService {
     private currentMatchId: string | null = null;
     private currentLobbyId: string | null = null;
     private onStateChange?: (state: ConnectionState) => void;
-    private connectPromise: Promise<boolean> | null = null;
+    private connectPromise: Promise<ConnectResult> | null = null;
 
     private buildConnection(accessToken: string): signalR.HubConnection {
         return new signalR.HubConnectionBuilder()
@@ -41,9 +47,14 @@ class SignalRService {
             .build();
     }
 
-    async connect(accessToken: string): Promise<boolean> {
+    private classifyConnectionError(error: unknown): ConnectFailureReason {
+        const message = error instanceof Error ? error.message : String(error);
+        return /401|403|invalid or expired token/i.test(message) ? 'unauthorized' : 'unavailable';
+    }
+
+    async connect(accessToken: string): Promise<ConnectResult> {
         if (this.connection && this.connectionState === 'connected') {
-            return true;
+            return { connected: true };
         }
 
         if (this.connectPromise) {
@@ -57,13 +68,16 @@ class SignalRService {
             this.connectPromise = this.connection.start()
                 .then(() => {
                     this.setConnectionState('connected');
-                    return true;
+                    return { connected: true } as ConnectResult;
                 })
                 .catch(error => {
                     console.error('SignalR connection failed', error);
                     this.connection = null;
                     this.setConnectionState('disconnected');
-                    return false;
+                    return {
+                        connected: false,
+                        reason: this.classifyConnectionError(error),
+                    } as ConnectResult;
                 })
                 .finally(() => {
                     this.connectPromise = null;
@@ -74,7 +88,10 @@ class SignalRService {
             console.error('SignalR connection failed', error);
             this.connection = null;
             this.setConnectionState('disconnected');
-            return false;
+            return {
+                connected: false,
+                reason: this.classifyConnectionError(error),
+            };
         }
     }
 

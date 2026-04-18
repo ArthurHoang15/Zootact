@@ -1,6 +1,10 @@
+using System.Runtime.Loader;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using Zootact.API.Hubs;
 using Zootact.API.Middleware;
 using Zootact.API.Services;
@@ -9,6 +13,23 @@ using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+var logsDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
+Directory.CreateDirectory(logsDirectory);
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.File(
+            Path.Combine(logsDirectory, "zootact-api-.log"),
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 14,
+            shared: true);
+});
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
 var frontendUrl = builder.Configuration["Frontend:Url"];
 var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL");
@@ -37,6 +58,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGameLogic();
 builder.Services.AddScoped<IMatchNotificationService, SignalRMatchNotificationService>();
 builder.Services.AddScoped<IPrivateLobbyNotificationService, SignalRPrivateLobbyNotificationService>();
+builder.Services.AddScoped<IHealthStatusService, HealthStatusService>();
 
 builder.Services.AddSignalR()
     .AddStackExchangeRedis(redisConnection, options =>
@@ -56,6 +78,7 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+RegisterLifecycleLogging(app);
 
 await ApplyDatabaseSchemaPatchesAsync(app);
 
@@ -67,6 +90,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {SanitizedPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("SanitizedPath", RequestLoggingSanitizer.SanitizeRequestPath(httpContext.Request));
+    };
+});
 app.UseFirebaseAuth();
 app.UseAuthorization();
 
@@ -127,4 +158,52 @@ static async Task ApplyDatabaseSchemaPatchesAsync(WebApplication app)
             END IF;
         END $$;
         """);
+}
+
+static void RegisterLifecycleLogging(WebApplication app)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("HostLifecycle");
+
+    AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+    {
+        logger.LogInformation("ProcessExit fired for PID {ProcessId}.", Environment.ProcessId);
+    };
+
+    AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
+    {
+        logger.LogCritical(
+            eventArgs.ExceptionObject as Exception,
+            "Unhandled exception triggered process termination. IsTerminating={IsTerminating}",
+            eventArgs.IsTerminating);
+    };
+
+    TaskScheduler.UnobservedTaskException += (_, eventArgs) =>
+    {
+        logger.LogError(eventArgs.Exception, "Unobserved task exception captured by host lifecycle hooks.");
+    };
+
+    AssemblyLoadContext.Default.Unloading += _ =>
+    {
+        logger.LogInformation("AssemblyLoadContext unloading signaled for PID {ProcessId}.", Environment.ProcessId);
+    };
+
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        logger.LogInformation(
+            "ApplicationStarted. PID={ProcessId}, Environment={Environment}, ContentRoot={ContentRoot}, Urls={Urls}",
+            Environment.ProcessId,
+            app.Environment.EnvironmentName,
+            app.Environment.ContentRootPath,
+            string.Join(", ", app.Urls));
+    });
+
+    app.Lifetime.ApplicationStopping.Register(() =>
+    {
+        logger.LogWarning("ApplicationStopping fired for PID {ProcessId}.", Environment.ProcessId);
+    });
+
+    app.Lifetime.ApplicationStopped.Register(() =>
+    {
+        logger.LogWarning("ApplicationStopped fired for PID {ProcessId}.", Environment.ProcessId);
+    });
 }

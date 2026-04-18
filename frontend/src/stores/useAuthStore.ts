@@ -15,7 +15,10 @@ import {
     onIdTokenChanged
 } from 'firebase/auth';
 import { routes } from '@/router/routes';
+import { fetchJson, isBackendUnavailableError, isUnauthorizedApiError } from '@/services/apiErrors';
 import type { UserDto } from '@/types';
+
+export type BackendStatus = 'healthy' | 'degraded' | 'recovering';
 
 interface AuthState {
     user: UserDto | null;
@@ -23,6 +26,8 @@ interface AuthState {
     isAuthenticated: boolean;
     isLoading: boolean;
     authBootstrapComplete: boolean;
+    backendStatus: BackendStatus;
+    backendStatusMessage: string | null;
     error: string | null;
 }
 
@@ -36,6 +41,9 @@ interface AuthActions {
     logout: () => Promise<void>;
     setLoading: (loading: boolean) => void;
     setUser: (user: UserDto | null) => void;
+    markBackendHealthy: () => void;
+    markBackendRecovering: () => void;
+    markBackendDegraded: (message: string) => void;
     initializeAuth: () => () => void;
 }
 
@@ -45,6 +53,8 @@ const initialState: AuthState = {
     isAuthenticated: false,
     isLoading: false,
     authBootstrapComplete: false,
+    backendStatus: 'healthy',
+    backendStatusMessage: null,
     error: null,
 };
 
@@ -63,26 +73,20 @@ function delay(ms: number): Promise<void> {
 
 async function requestCurrentUser(token: string): Promise<UserDto> {
     for (let attempt = 1; attempt <= 3; attempt++) {
-        const response = await fetch('/api/auth/me', {
-            method: 'GET',
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
+        try {
+            return await fetchJson<UserDto>('/api/auth/me', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+        } catch (error) {
+            if (!isBackendUnavailableError(error) || attempt === 3) {
+                throw error;
+            }
 
-        if (response.ok) {
-            return response.json();
+            await delay(250 * attempt);
         }
-
-        const error = await response.json().catch(() => null) as { message?: string; error?: string } | null;
-        const message = error?.message || error?.error || 'Failed to load user from backend';
-        const isRetryable = response.status === 500 || response.status === 503;
-
-        if (!isRetryable || attempt === 3) {
-            throw new Error(message);
-        }
-
-        await delay(250 * attempt);
     }
 
     throw new Error('Failed to load user from backend');
@@ -208,12 +212,22 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
                 setLoading: (loading) => set({ isLoading: loading }),
                 setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
+                markBackendHealthy: () => set({ backendStatus: 'healthy', backendStatusMessage: null }),
+                markBackendRecovering: () => set(state => ({
+                    backendStatus: state.isAuthenticated ? 'recovering' : state.backendStatus,
+                    backendStatusMessage: null,
+                })),
+                markBackendDegraded: (message) => set(state => ({
+                    backendStatus: state.isAuthenticated ? 'degraded' : state.backendStatus,
+                    backendStatusMessage: state.isAuthenticated ? message : state.backendStatusMessage,
+                })),
 
                 initializeAuth: () => {
                     authStateUnsubscribe?.();
 
                     authStateUnsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
                         const requestId = ++authStateRequestId;
+                        let token: string | null = null;
 
                         if (!firebaseUser) {
                             if (requestId !== authStateRequestId) {
@@ -227,23 +241,54 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                         set({ isLoading: true, error: null });
 
                         try {
-                            const token = await firebaseUser.getIdToken();
+                            token = await firebaseUser.getIdToken();
                             const user = await fetchCurrentUser(token);
 
                             if (requestId !== authStateRequestId) {
                                 return;
                             }
 
-                            set({
+                            set(state => ({
                                 firebaseToken: token,
                                 user,
                                 isAuthenticated: true,
                                 isLoading: false,
                                 authBootstrapComplete: true,
+                                backendStatus: state.backendStatus === 'recovering' ? 'recovering' : 'healthy',
+                                backendStatusMessage: null,
                                 error: null,
-                            });
+                            }));
                         } catch (err: unknown) {
                             if (requestId !== authStateRequestId) {
+                                return;
+                            }
+
+                            if (isUnauthorizedApiError(err)) {
+                                try {
+                                    await signOut(auth);
+                                } catch (signOutError) {
+                                    console.warn('Failed to sign out Firebase after unauthorized bootstrap', signOutError);
+                                }
+
+                                set({
+                                    ...initialState,
+                                    authBootstrapComplete: true,
+                                    error: getErrorMessage(err),
+                                });
+                                return;
+                            }
+
+                            if (isBackendUnavailableError(err)) {
+                                set(state => ({
+                                    user: state.user,
+                                    firebaseToken: token,
+                                    isAuthenticated: true,
+                                    isLoading: false,
+                                    authBootstrapComplete: true,
+                                    backendStatus: 'degraded',
+                                    backendStatusMessage: getErrorMessage(err),
+                                    error: null,
+                                }));
                                 return;
                             }
 
@@ -279,3 +324,4 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 export const selectUser = (state: AuthState) => state.user;
 export const selectIsAuthenticated = (state: AuthState) => state.isAuthenticated;
 export const selectFirebaseToken = (state: AuthState) => state.firebaseToken;
+export const selectBackendStatus = (state: AuthState) => state.backendStatus;

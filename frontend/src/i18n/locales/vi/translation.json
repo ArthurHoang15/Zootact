@@ -140,6 +140,13 @@
         "guestHelp": "Bạn được đặt sẵn sàng ngay khi vào phòng. Có thể bật hoặc tắt trạng thái nếu cần.",
         "connectionError": "Không thể kết nối tới dịch vụ phòng chờ thời gian thực."
     },
+    "status": {
+        "degradedTitle": "Mất kết nối máy chủ",
+        "degradedBody": "Backend local tạm thời không sẵn sàng. Phiên đăng nhập của bạn vẫn được giữ và hệ thống sẽ tự thử kết nối lại.",
+        "recoveringTitle": "Đang khôi phục kết nối",
+        "recoveringBody": "Hệ thống đang thử khôi phục kết nối backend và đồng bộ lại phiên làm việc.",
+        "actionsDisabled": "Các thao tác thời gian thực tạm thời bị khóa trong lúc hệ thống đang kết nối lại backend local."
+    },
     "rules": {
         "title": "Luật Cờ Thú",
         "subtitle": "Phần hướng dẫn này bám đúng với luật hiện đang được áp dụng trong Zootact.",

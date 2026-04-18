@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, LanguageSwitcher } from '@/components/ui';
 import { buildLobbyPath, routes } from '@/router/routes';
+import { isBackendUnavailableError } from '@/services/apiErrors';
 import { apiService, signalRService } from '@/services';
 import { useAuthStore, useLobbyStore } from '@/stores';
 
@@ -15,10 +16,16 @@ function buildInviteLink(lobbyId: string) {
     return `${window.location.origin}${buildLobbyPath(lobbyId)}`;
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+    return error instanceof Error ? error.message : fallback;
+}
+
 export function LobbyPage({ lobbyId }: LobbyPageProps) {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const firebaseToken = useAuthStore(state => state.firebaseToken);
+    const backendStatus = useAuthStore(state => state.backendStatus);
+    const markBackendDegraded = useAuthStore(state => state.markBackendDegraded);
     const lobby = useLobbyStore(state => state.lobby);
     const isLoading = useLobbyStore(state => state.isLoading);
     const error = useLobbyStore(state => state.error);
@@ -36,6 +43,11 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
             return;
         }
 
+        if (backendStatus === 'degraded') {
+            setLoading(false);
+            return;
+        }
+
         let cancelled = false;
 
         async function bootstrapLobby() {
@@ -47,8 +59,11 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                     throw new Error(t('lobby.connectionError'));
                 }
 
-                const connected = await signalRService.connect(firebaseToken);
-                if (!connected) {
+                const connection = await signalRService.connect(firebaseToken);
+                if (!connection.connected) {
+                    if (connection.reason === 'unavailable') {
+                        markBackendDegraded(t('status.degradedBody'));
+                    }
                     throw new Error(t('lobby.connectionError'));
                 }
 
@@ -69,6 +84,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                 await signalRService.joinLobby(lobbyId);
             } catch (err: unknown) {
                 if (!cancelled) {
+                    if (isBackendUnavailableError(err)) {
+                        markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+                    }
                     setError(err instanceof Error ? err.message : t('common.error'));
                 }
             } finally {
@@ -83,7 +101,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
         return () => {
             cancelled = true;
         };
-    }, [firebaseToken, lobbyId, setError, setLoading, setLobby, t]);
+    }, [backendStatus, firebaseToken, lobbyId, markBackendDegraded, setError, setLoading, setLobby, t]);
 
     useEffect(() => {
         if (!closedReason) {
@@ -116,6 +134,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
     const isGuest = lobby?.current_user_role === 'Guest';
     const guestReady = lobby?.guest?.is_ready ?? false;
     const canStart = Boolean(lobby && isHost && lobby.can_start && !lobby.countdown_active);
+    const actionsDisabled = backendStatus !== 'healthy';
     const inviteLink = buildInviteLink(lobbyId);
     const lobbyModeLabel = lobby?.mode === 'FriendlyUntimed'
         ? t('lobby.untimedMode')
@@ -137,6 +156,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
         try {
             await apiService.leaveLobby(lobbyId);
         } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
             setError(err instanceof Error ? err.message : t('common.error'));
             setPendingAction(null);
             return;
@@ -166,6 +188,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                 setLobby(response.lobby);
             }
         } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
             setError(err instanceof Error ? err.message : t('common.error'));
         } finally {
             setPendingAction(null);
@@ -181,6 +206,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                 setLobby(response.lobby);
             }
         } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
             setError(err instanceof Error ? err.message : t('common.error'));
         } finally {
             setPendingAction(null);
@@ -196,6 +224,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                 setLobby(response.lobby);
             }
         } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
             setError(err instanceof Error ? err.message : t('common.error'));
         } finally {
             setPendingAction(null);
@@ -207,7 +238,11 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
             <header className="relative overflow-hidden bg-gradient-to-br from-carrot-orange via-candy-green to-cream px-4 py-6 sm:py-8">
                 <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-4">
                     <div>
-                        <button className="text-sm font-bold text-white/90" onClick={() => void handleLeaveLobby()}>
+                        <button
+                            className="text-sm font-bold text-white/90 disabled:cursor-not-allowed disabled:text-white/50"
+                            onClick={() => void handleLeaveLobby()}
+                            disabled={actionsDisabled || pendingAction === 'leave'}
+                        >
                             {t('common.back')}
                         </button>
                         <h1 className="mt-3 font-display text-4xl text-white sm:text-5xl">{t('lobby.title')}</h1>
@@ -318,6 +353,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                         variant="danger"
                                         onClick={() => void handleCancelCountdown()}
                                         isLoading={pendingAction === 'cancel'}
+                                        disabled={actionsDisabled}
                                     >
                                         {t('lobby.cancelStart')}
                                     </CuteButton>
@@ -326,7 +362,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                         fullWidth
                                         onClick={() => void handleStart()}
                                         isLoading={pendingAction === 'start'}
-                                        disabled={!canStart}
+                                        disabled={!canStart || actionsDisabled}
                                     >
                                         {t('lobby.start')}
                                     </CuteButton>
@@ -336,7 +372,7 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                         variant={guestReady ? 'accent' : 'secondary'}
                                         onClick={() => void handleToggleReady()}
                                         isLoading={pendingAction === 'ready'}
-                                        disabled={!isGuest}
+                                        disabled={!isGuest || actionsDisabled}
                                     >
                                         {guestReady ? t('lobby.unready') : t('lobby.ready')}
                                     </CuteButton>
@@ -347,13 +383,20 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
                                     variant="ghost"
                                     onClick={() => void handleLeaveLobby()}
                                     isLoading={pendingAction === 'leave'}
+                                    disabled={actionsDisabled}
                                 >
                                     {t('lobby.leave')}
                                 </CuteButton>
                             </div>
 
                             <div className="rounded-2xl bg-white px-4 py-4 text-sm text-forest-light">
-                                {isLoading ? t('common.loading') : isHost ? t('lobby.hostHelp') : t('lobby.guestHelp')}
+                                {isLoading
+                                    ? t('common.loading')
+                                    : actionsDisabled
+                                        ? t('status.actionsDisabled')
+                                        : isHost
+                                            ? t('lobby.hostHelp')
+                                            : t('lobby.guestHelp')}
                             </div>
                         </Card>
                     </motion.aside>

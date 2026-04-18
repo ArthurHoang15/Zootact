@@ -6,13 +6,14 @@ import { Board, GameEndModal, MoveHistory, PlayerInfo, RulesModal } from '@/comp
 import { CuteButton, LanguageSwitcher } from '@/components/ui';
 import { routes } from '@/router/routes';
 import { apiService, signalRService } from '@/services';
-import { useGameStore } from '@/stores';
+import { useAuthStore, useGameStore } from '@/stores';
 import { sanitizeText } from '@/utils';
 import type { PositionDto } from '@/types';
 
 export function GamePage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const backendStatus = useAuthStore(state => state.backendStatus);
     const matchId = useGameStore(state => state.matchId);
     const board = useGameStore(state => state.board);
     const chatMessages = useGameStore(state => state.chatMessages);
@@ -30,6 +31,7 @@ export function GamePage() {
     const [isResigning, setIsResigning] = useState(false);
     const [isRulesOpen, setIsRulesOpen] = useState(false);
     const hasActiveBoard = Boolean(matchId && board);
+    const canUseLiveActions = hasActiveBoard && backendStatus === 'healthy';
 
     useEffect(() => {
         if (!matchId) {
@@ -76,6 +78,10 @@ export function GamePage() {
     }, [disconnectCountdown, isGameOver, isOpponentDisconnected, updateDisconnectCountdown]);
 
     async function handleMove(from: PositionDto, to: PositionDto) {
+        if (!canUseLiveActions) {
+            return;
+        }
+
         const result = await signalRService.makeMove({
             from_row: from.row,
             from_col: from.col,
@@ -89,6 +95,10 @@ export function GamePage() {
     }
 
     async function handleChatSubmit() {
+        if (!canUseLiveActions) {
+            return;
+        }
+
         const message = sanitizeText(chatInput).trim();
         if (!message) {
             return;
@@ -100,6 +110,10 @@ export function GamePage() {
 
     async function handleResign() {
         if (isResigning) {
+            return;
+        }
+
+        if (!canUseLiveActions) {
             return;
         }
 
@@ -149,7 +163,7 @@ export function GamePage() {
                     </div>
 
                     <div className="w-full max-w-md">
-                        <Board onMove={handleMove} />
+                        <Board onMove={canUseLiveActions ? handleMove : undefined} />
                     </div>
 
                     <div className="w-full max-w-sm lg:hidden">
@@ -170,10 +184,10 @@ export function GamePage() {
                         <div className="rounded-2xl bg-white p-4 shadow-cute">
                             <p className="font-display">{t('game.drawOffered', { player: drawOfferedBy })}</p>
                             <div className="mt-3 flex gap-2">
-                                <CuteButton size="sm" onClick={() => void signalRService.acceptDraw().then(() => setDrawOffered(null))}>
+                                <CuteButton size="sm" onClick={() => void signalRService.acceptDraw().then(() => setDrawOffered(null))} disabled={!canUseLiveActions}>
                                     {t('game.acceptDraw')}
                                 </CuteButton>
-                                <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.declineDraw().then(() => setDrawOffered(null))}>
+                                <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.declineDraw().then(() => setDrawOffered(null))} disabled={!canUseLiveActions}>
                                     {t('game.declineDraw')}
                                 </CuteButton>
                             </div>
@@ -182,10 +196,10 @@ export function GamePage() {
 
                     {!isGameOver && hasActiveBoard && (
                         <div className="flex gap-3">
-                            <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.offerDraw()}>
+                            <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.offerDraw()} disabled={!canUseLiveActions}>
                                 {t('game.offerDraw')}
                             </CuteButton>
-                            <CuteButton size="sm" variant="danger" onClick={() => void handleResign()} disabled={isResigning}>
+                            <CuteButton size="sm" variant="danger" onClick={() => void handleResign()} disabled={isResigning || !canUseLiveActions}>
                                 {t('game.resign')}
                             </CuteButton>
                         </div>
@@ -207,7 +221,7 @@ export function GamePage() {
                             <input
                                 className="flex-1 rounded-2xl border border-forest-light/20 px-3 py-2"
                                 value={chatInput}
-                                disabled={!hasActiveBoard}
+                                disabled={!canUseLiveActions}
                                 onChange={event => setChatInput(event.target.value)}
                                 onKeyDown={event => {
                                     if (event.key === 'Enter') {
@@ -215,10 +229,13 @@ export function GamePage() {
                                     }
                                 }}
                             />
-                            <CuteButton size="sm" onClick={() => void handleChatSubmit()} disabled={!hasActiveBoard}>
+                            <CuteButton size="sm" onClick={() => void handleChatSubmit()} disabled={!canUseLiveActions}>
                                 Send
                             </CuteButton>
                         </div>
+                        {!canUseLiveActions && (
+                            <p className="mt-3 text-sm text-forest-light">{t('status.actionsDisabled')}</p>
+                        )}
                     </div>
 
                     <div className="rounded-2xl bg-white p-4 shadow-cute">

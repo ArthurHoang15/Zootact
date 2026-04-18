@@ -31,3 +31,16 @@ Zootact is a real-time Dou Shou Qi web app with a cute UI, Firebase auth, Signal
 ## Local Setup
 
 See [docs/COMPLETE_SETUP.md](D:/Anh-Quan/Codes/Zootact/docs/COMPLETE_SETUP.md) for the full bring-up steps and required Firebase configuration.
+
+## Recommended Dev Workflow
+
+Use the root scripts so Docker infra, backend, frontend, and optional AI service are started consistently:
+
+- `bun run dev:infra`
+- `bun run dev:backend`
+- `bun run dev:frontend`
+- `bun run dev:ai`
+- `bun run dev:status`
+- `bun run dev:down`
+
+Docker is required for PostgreSQL and Redis. The backend and frontend still run as local processes in development.
