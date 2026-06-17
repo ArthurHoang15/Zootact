@@ -98,6 +98,7 @@ ai-skills/
 .swarm/
 memory/
 .codex-temp/
+.serena/
 .tools/
 
 # ==============================================

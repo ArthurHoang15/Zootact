@@ -7,6 +7,50 @@ namespace Zootact.API.Services;
 
 public static class EfMigrationBootstrapper
 {
+    public static IReadOnlyList<string> GetLegacySchemaCompatibilityStatements(string? providerName)
+    {
+        if (providerName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return [];
+        }
+
+        return
+        [
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'users'
+                      AND column_name = 'email'
+                      AND character_maximum_length IS NOT NULL
+                      AND character_maximum_length < 512
+                ) THEN
+                    ALTER TABLE users ALTER COLUMN email TYPE character varying(512);
+                END IF;
+            END $$;
+            """,
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'users'
+                      AND column_name = 'avatar_url'
+                      AND character_maximum_length IS NOT NULL
+                      AND character_maximum_length < 2048
+                ) THEN
+                    ALTER TABLE users ALTER COLUMN avatar_url TYPE character varying(2048);
+                END IF;
+            END $$;
+            """
+        ];
+    }
+
     public static async Task EnsureLegacyMigrationBaselineAsync(
         DatabaseFacade database,
         IEnumerable<string> migrationIds,
@@ -28,6 +72,11 @@ public static class EfMigrationBootstrapper
             if (historyExists || !usersTableExists)
             {
                 return;
+            }
+
+            foreach (var statement in GetLegacySchemaCompatibilityStatements(database.ProviderName))
+            {
+                await database.ExecuteSqlRawAsync(statement, cancellationToken);
             }
 
             await database.ExecuteSqlRawAsync("""

@@ -169,6 +169,24 @@ public sealed class PrivateLobbyServiceTests
     }
 
     [Fact]
+    public async Task TryClaimDueCountdownAsync_AllowsOnlyOneWorkerToClaimDueLobby()
+    {
+        var fixture = new PrivateLobbyFixture();
+        var lobby = await fixture.Service.CreateLobbyAsync(fixture.HostId);
+        await fixture.Service.JoinLobbyAsync(lobby.LobbyId, fixture.GuestId);
+        var countdownLobby = await fixture.Service.StartCountdownAsync(lobby.LobbyId, fixture.HostId);
+        countdownLobby.CountdownEndAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await fixture.PrivateLobbyRepository.SaveLobbyAsync(countdownLobby);
+        await fixture.PrivateLobbyRepository.ScheduleCountdownAsync(countdownLobby.LobbyId, countdownLobby.CountdownEndAt.Value);
+
+        var firstClaim = await fixture.PrivateLobbyRepository.TryClaimDueCountdownAsync(lobby.LobbyId, DateTimeOffset.UtcNow);
+        var secondClaim = await fixture.PrivateLobbyRepository.TryClaimDueCountdownAsync(lobby.LobbyId, DateTimeOffset.UtcNow);
+
+        Assert.True(firstClaim);
+        Assert.False(secondClaim);
+    }
+
+    [Fact]
     public async Task CreateLobby_FailsWhenUserAlreadyInActiveMatch()
     {
         var fixture = new PrivateLobbyFixture();
@@ -276,6 +294,17 @@ public sealed class PrivateLobbyServiceTests
                 .ToArray();
 
             return Task.FromResult(result);
+        }
+
+        public Task<bool> TryClaimDueCountdownAsync(Guid lobbyId, DateTimeOffset now)
+        {
+            if (!_countdowns.TryGetValue(lobbyId, out var dueAt) || dueAt > now)
+            {
+                return Task.FromResult(false);
+            }
+
+            _countdowns.Remove(lobbyId);
+            return Task.FromResult(true);
         }
     }
 

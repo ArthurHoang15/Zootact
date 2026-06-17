@@ -77,6 +77,7 @@ public class FirebaseAuthMiddleware
             // Extract user info from token
             var rawFirebaseUid = decodedToken.Uid;
             var rawEmail = decodedToken.Claims.GetValueOrDefault("email")?.ToString();
+            var emailVerified = GetBooleanClaim(decodedToken.Claims.GetValueOrDefault("email_verified"));
             var rawPhotoUrl = decodedToken.Claims.GetValueOrDefault("picture")?.ToString();
 
             var firebaseUid = Truncate(rawFirebaseUid, MaxFirebaseUidLength);
@@ -91,6 +92,7 @@ public class FirebaseAuthMiddleware
                 dbContext,
                 firebaseUid,
                 email,
+                emailVerified,
                 displayName,
                 photoUrl);
 
@@ -129,6 +131,12 @@ public class FirebaseAuthMiddleware
             _logger.LogError(ex, "Database error while syncing Firebase user for path {Path}", context.Request.Path);
             await WriteErrorResponseAsync(context, "Authentication data sync unavailable", ex, StatusCodes.Status503ServiceUnavailable);
         }
+        catch (UnverifiedEmailRelinkException)
+        {
+            _logger.LogWarning("Rejected Firebase account relink attempt with unverified email for path {Path}", context.Request.Path);
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = "Email must be verified before linking this account" });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Firebase auth middleware");
@@ -156,6 +164,7 @@ public class FirebaseAuthMiddleware
         ZootactDbContext dbContext,
         string firebaseUid,
         string? email,
+        bool emailVerified,
         string? displayName,
         string? photoUrl)
     {
@@ -165,7 +174,7 @@ public class FirebaseAuthMiddleware
         {
             dbContext.ChangeTracker.Clear();
 
-            var user = await FindUserAsync(dbContext, firebaseUid, email, context.RequestAborted);
+            var user = await FindUserForFirebaseAsync(dbContext, firebaseUid, email, emailVerified, context.RequestAborted);
             if (user is not null)
             {
                 var relinked = user.FirebaseUid != firebaseUid;
@@ -201,6 +210,17 @@ public class FirebaseAuthMiddleware
                         maxAttempts);
                     await Task.Delay(100 * attempt, context.RequestAborted);
                     continue;
+                }
+            }
+
+            if (!emailVerified && !string.IsNullOrWhiteSpace(email))
+            {
+                var emailBelongsToExistingUser = await dbContext.Users.AnyAsync(
+                    u => u.Email == email && u.FirebaseUid != firebaseUid,
+                    context.RequestAborted);
+                if (emailBelongsToExistingUser)
+                {
+                    throw new UnverifiedEmailRelinkException();
                 }
             }
 
@@ -246,14 +266,15 @@ public class FirebaseAuthMiddleware
         throw new DbUpdateException($"Failed to sync Firebase user {firebaseUid} after multiple attempts.");
     }
 
-    private static async Task<UserEntity?> FindUserAsync(
+    public static async Task<UserEntity?> FindUserForFirebaseAsync(
         ZootactDbContext dbContext,
         string firebaseUid,
         string? email,
+        bool emailVerified,
         CancellationToken cancellationToken)
     {
         var user = await dbContext.Users.FirstOrDefaultAsync(u => u.FirebaseUid == firebaseUid, cancellationToken);
-        if (user is not null || string.IsNullOrWhiteSpace(email))
+        if (user is not null || string.IsNullOrWhiteSpace(email) || !emailVerified)
         {
             return user;
         }
@@ -468,6 +489,18 @@ public class FirebaseAuthMiddleware
 
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];
+
+    private static bool GetBooleanClaim(object? claimValue)
+    {
+        return claimValue switch
+        {
+            bool booleanValue => booleanValue,
+            string stringValue when bool.TryParse(stringValue, out var parsed) => parsed,
+            _ => false
+        };
+    }
+
+    private sealed class UnverifiedEmailRelinkException : Exception;
 }
 
 /// <summary>

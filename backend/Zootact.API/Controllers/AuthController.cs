@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 using Zootact.Core.Domain;
 using Zootact.Core.DTOs;
 using Zootact.Infrastructure.Data;
@@ -17,6 +18,8 @@ public class AuthController(
     ZootactDbContext dbContext,
     ILogger<AuthController> logger) : ControllerBase
 {
+    private static readonly Regex UsernameRegex = new("^[a-z0-9]{3,50}$", RegexOptions.CultureInvariant);
+
     private static UserDto MapUserDto(UserEntity user) => new()
     {
         Id = user.Id.ToString(),
@@ -197,9 +200,18 @@ public class AuthController(
         try
         {
             // Check if username is taken
-            if (!string.IsNullOrWhiteSpace(request.Username))
+            if (request.Username is not null)
             {
-                var normalizedUsername = request.Username.Trim();
+                var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+                if (!UsernameRegex.IsMatch(normalizedUsername))
+                {
+                    return BadRequest(new ErrorResponse
+                    {
+                        Error = "InvalidUsername",
+                        Message = "Username must be 3-50 lowercase letters or digits."
+                    });
+                }
+
                 if (normalizedUsername == user.Username)
                 {
                     return Ok(await BuildProfileResponseAsync(user.Id));

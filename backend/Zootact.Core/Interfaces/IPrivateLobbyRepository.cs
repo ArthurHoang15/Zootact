@@ -13,4 +13,5 @@ public interface IPrivateLobbyRepository
     Task ScheduleCountdownAsync(Guid lobbyId, DateTimeOffset dueAt);
     Task ClearCountdownAsync(Guid lobbyId);
     Task<IReadOnlyList<Guid>> GetDueCountdownLobbyIdsAsync(DateTimeOffset now, int take);
+    Task<bool> TryClaimDueCountdownAsync(Guid lobbyId, DateTimeOffset now);
 }

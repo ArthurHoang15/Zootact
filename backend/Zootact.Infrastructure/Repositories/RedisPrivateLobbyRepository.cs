@@ -69,6 +69,27 @@ public sealed class RedisPrivateLobbyRepository(IConnectionMultiplexer redis) : 
             .ToArray();
     }
 
+    public async Task<bool> TryClaimDueCountdownAsync(Guid lobbyId, DateTimeOffset now)
+    {
+        const string script = """
+            local score = redis.call('ZSCORE', KEYS[1], ARGV[1])
+            if not score then
+                return 0
+            end
+            if tonumber(score) > tonumber(ARGV[2]) then
+                return 0
+            end
+            return redis.call('ZREM', KEYS[1], ARGV[1])
+            """;
+
+        var result = await Db.ScriptEvaluateAsync(
+            script,
+            [CountdownIndexKey],
+            [lobbyId.ToString(), now.ToUnixTimeMilliseconds()]);
+
+        return (int)result == 1;
+    }
+
     private static HashEntry[] SerializeLobby(PrivateLobby lobby)
     {
         return

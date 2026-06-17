@@ -27,7 +27,10 @@ public sealed class PrivateLobbyCountdownService(
                         break;
                     }
 
-                    await privateLobbyService.TryStartMatchAsync(lobbyId, stoppingToken);
+                    if (await lobbyRepository.TryClaimDueCountdownAsync(lobbyId, DateTimeOffset.UtcNow))
+                    {
+                        await privateLobbyService.TryStartMatchAsync(lobbyId, stoppingToken);
+                    }
                 }
             }
             catch (Exception ex)

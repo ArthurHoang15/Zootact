@@ -7,6 +7,23 @@ namespace Zootact.Tests.Services;
 public sealed class EfMigrationBootstrapperTests
 {
     [Fact]
+    public void GetLegacySchemaCompatibilityStatements_ReturnsPostgresColumnWidening()
+    {
+        var statements = EfMigrationBootstrapper.GetLegacySchemaCompatibilityStatements("Npgsql.EntityFrameworkCore.PostgreSQL");
+
+        Assert.Contains(statements, statement => statement.Contains("ALTER TABLE users ALTER COLUMN email TYPE character varying(512)", StringComparison.Ordinal));
+        Assert.Contains(statements, statement => statement.Contains("ALTER TABLE users ALTER COLUMN avatar_url TYPE character varying(2048)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void GetLegacySchemaCompatibilityStatements_SkipsSqlite()
+    {
+        var statements = EfMigrationBootstrapper.GetLegacySchemaCompatibilityStatements("Microsoft.EntityFrameworkCore.Sqlite");
+
+        Assert.Empty(statements);
+    }
+
+    [Fact]
     public async Task EnsureLegacyMigrationBaselineAsync_LeavesConnectionUsableForSubsequentOperations()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
