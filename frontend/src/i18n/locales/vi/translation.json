@@ -84,6 +84,7 @@
         "opponentReconnected": "Đối thủ đã kết nối lại!",
         "timeOut": "Hết giờ!",
         "smartReplay": "Phát lại thông minh",
+        "smartReplayDisabled": "Phát lại thông minh tạm thời không khả dụng trong bản deploy này.",
         "moveHistory": "Lịch sử nước đi"
     },
     "pieces": {
@@ -142,10 +143,10 @@
     },
     "status": {
         "degradedTitle": "Mất kết nối máy chủ",
-        "degradedBody": "Backend local tạm thời không sẵn sàng. Phiên đăng nhập của bạn vẫn được giữ và hệ thống sẽ tự thử kết nối lại.",
+        "degradedBody": "Máy chủ tạm thời không sẵn sàng. Phiên đăng nhập của bạn vẫn được giữ và hệ thống sẽ tự thử kết nối lại.",
         "recoveringTitle": "Đang khôi phục kết nối",
-        "recoveringBody": "Hệ thống đang thử khôi phục kết nối backend và đồng bộ lại phiên làm việc.",
-        "actionsDisabled": "Các thao tác thời gian thực tạm thời bị khóa trong lúc hệ thống đang kết nối lại backend local."
+        "recoveringBody": "Hệ thống đang thử khôi phục kết nối máy chủ và đồng bộ lại phiên làm việc.",
+        "actionsDisabled": "Các thao tác thời gian thực tạm thời bị khóa trong lúc hệ thống đang kết nối lại máy chủ."
     },
     "rules": {
         "title": "Luật Cờ Thú",

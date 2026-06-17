@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { getPublicAppUrl } from '@/config/runtime';
 import { Avatar, Card, CuteButton, LanguageSwitcher } from '@/components/ui';
 import { buildLobbyPath, routes } from '@/router/routes';
 import { isBackendUnavailableError } from '@/services/apiErrors';
@@ -13,7 +14,7 @@ interface LobbyPageProps {
 }
 
 function buildInviteLink(lobbyId: string) {
-    return `${window.location.origin}${buildLobbyPath(lobbyId)}`;
+    return `${getPublicAppUrl()}${buildLobbyPath(lobbyId)}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { isAiAnalysisEnabled } from '@/config/runtime';
 import { Board, GameEndModal, MoveHistory, PlayerInfo, RulesModal } from '@/components/game';
 import { CuteButton, LanguageSwitcher } from '@/components/ui';
 import { routes } from '@/router/routes';
@@ -30,6 +31,7 @@ export function GamePage() {
     const [chatInput, setChatInput] = useState('');
     const [isResigning, setIsResigning] = useState(false);
     const [isRulesOpen, setIsRulesOpen] = useState(false);
+    const aiAnalysisEnabled = isAiAnalysisEnabled();
     const hasActiveBoard = Boolean(matchId && board);
     const canUseLiveActions = hasActiveBoard && backendStatus === 'healthy';
 
@@ -55,7 +57,10 @@ export function GamePage() {
     }, [matchId]);
 
     useEffect(() => {
-        if (!isGameOver || !matchId) {
+        if (!isGameOver || !matchId || !aiAnalysisEnabled) {
+            if (isGameOver && !aiAnalysisEnabled) {
+                setAnalysisStatus('Disabled');
+            }
             return;
         }
 
@@ -63,7 +68,7 @@ export function GamePage() {
         void apiService.getMatchAnalysis(matchId)
             .then(response => setAnalysis(response))
             .catch(() => setAnalysisStatus('Failed'));
-    }, [isGameOver, matchId, setAnalysis, setAnalysisStatus]);
+    }, [aiAnalysisEnabled, isGameOver, matchId, setAnalysis, setAnalysisStatus]);
 
     useEffect(() => {
         if (!isOpponentDisconnected || disconnectCountdown <= 0 || isGameOver) {
@@ -240,14 +245,17 @@ export function GamePage() {
 
                     <div className="rounded-2xl bg-white p-4 shadow-cute">
                         <h3 className="font-display text-xl text-forest-dark">{t('game.smartReplay')}</h3>
-                        {!isGameOver && <p className="mt-2 text-sm text-forest-light">{t('game.waiting')}</p>}
-                        {isGameOver && analysisStatus === 'Pending' && (
+                        {!aiAnalysisEnabled && (
+                            <p className="mt-2 text-sm text-forest-light">{t('game.smartReplayDisabled')}</p>
+                        )}
+                        {aiAnalysisEnabled && !isGameOver && <p className="mt-2 text-sm text-forest-light">{t('game.waiting')}</p>}
+                        {aiAnalysisEnabled && isGameOver && analysisStatus === 'Pending' && (
                             <p className="mt-2 text-sm text-forest-light">{t('common.loading')}</p>
                         )}
-                        {isGameOver && analysisStatus === 'Failed' && (
+                        {aiAnalysisEnabled && isGameOver && analysisStatus === 'Failed' && (
                             <p className="mt-2 text-sm text-player-red">{t('common.error')}</p>
                         )}
-                        {analysis?.summary && (
+                        {aiAnalysisEnabled && analysis?.summary && (
                             <div className="mt-3 space-y-3 text-sm">
                                 <p>Blue accuracy: {analysis.summary.accuracy_blue}%</p>
                                 <p>Red accuracy: {analysis.summary.accuracy_red}%</p>

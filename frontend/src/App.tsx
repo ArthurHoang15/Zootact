@@ -94,7 +94,7 @@ function AppShell() {
             }
 
             if (state === 'reconnecting' || state === 'disconnected') {
-                useAuthStore.getState().markBackendDegraded('Realtime connection to the local backend was lost.');
+                useAuthStore.getState().markBackendDegraded('Realtime connection to the server was lost.');
             }
         });
 
@@ -208,7 +208,7 @@ function AppShell() {
                         return;
                     }
 
-                    markBackendDegraded('Could not reach the local backend.');
+                    markBackendDegraded('Could not reach the server.');
                     return;
                 }
 
@@ -254,7 +254,7 @@ function AppShell() {
                 }
 
                 if (isBackendUnavailableError(error)) {
-                    markBackendDegraded(getErrorMessage(error, 'Could not reach the local backend.'));
+                    markBackendDegraded(getErrorMessage(error, 'Could not reach the server.'));
                     return;
                 }
 

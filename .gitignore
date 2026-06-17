@@ -97,6 +97,8 @@ ai-skills/
 .claude-flow/
 .swarm/
 memory/
+.codex-temp/
+.tools/
 
 # ==============================================
 # 3. ROOT PROJECT FILES
@@ -180,6 +182,7 @@ frontend/.stylelintcache
 frontend/.cache/
 frontend/.parcel-cache/
 frontend/.vite/
+*.tsbuildinfo
 
 # Environment
 frontend/.env.local

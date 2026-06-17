@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { persist, devtools } from 'zustand/middleware';
 import { auth } from '@/config/firebase';
+import { getApiBaseUrl, getPublicAppUrl } from '@/config/runtime';
 import {
     signInWithEmailAndPassword,
     signInWithPopup,
@@ -72,9 +73,11 @@ function delay(ms: number): Promise<void> {
 }
 
 async function requestCurrentUser(token: string): Promise<UserDto> {
+    const authMeUrl = `${getApiBaseUrl()}/auth/me`;
+
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-            return await fetchJson<UserDto>('/api/auth/me', {
+            return await fetchJson<UserDto>(authMeUrl, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -168,7 +171,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                     set({ isLoading: true, error: null });
                     try {
                         const actionCodeSettings = {
-                            url: `${window.location.origin}${routes.emailLink}`,
+                            url: `${getPublicAppUrl()}${routes.emailLink}`,
                             handleCodeInApp: true,
                         };
                         await sendSignInLinkToEmail(auth, email, actionCodeSettings);

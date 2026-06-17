@@ -1,6 +1,7 @@
 using System.Runtime.Loader;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -13,8 +14,14 @@ using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+ConfigureUrls(builder);
+
+var enableFileLogging = builder.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Logging:EnableFileSink");
 var logsDirectory = Path.Combine(builder.Environment.ContentRootPath, "logs");
-Directory.CreateDirectory(logsDirectory);
+if (enableFileLogging)
+{
+    Directory.CreateDirectory(logsDirectory);
+}
 
 builder.Host.UseSerilog((context, services, configuration) =>
 {
@@ -22,37 +29,45 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .ReadFrom.Configuration(context.Configuration)
         .MinimumLevel.Override("Microsoft.AspNetCore.Hosting.Diagnostics", LogEventLevel.Warning)
         .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .WriteTo.File(
+        .WriteTo.Console();
+
+    if (enableFileLogging)
+    {
+        configuration.WriteTo.File(
             Path.Combine(logsDirectory, "zootact-api-.log"),
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 14,
             shared: true);
+    }
 });
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
-var frontendUrl = builder.Configuration["Frontend:Url"];
+var frontendOrigins = FrontendOriginResolver.Resolve(builder.Configuration);
 var postgresConnection = builder.Configuration.GetConnectionString("PostgreSQL");
 var redisConnection = builder.Configuration.GetConnectionString("Redis");
-var firebaseConfigPath = builder.Configuration["Firebase:ServiceAccountKeyPath"] ?? "Config/firebase-adminsdk.json";
+var firebaseAdminCredentials = FirebaseAdminCredentialLoader.Load(builder.Configuration, builder.Environment.ContentRootPath);
 
-if (string.IsNullOrWhiteSpace(frontendUrl))
-    throw new InvalidOperationException("Missing required configuration: Frontend:Url");
+if (frontendOrigins.Length == 0)
+    throw new InvalidOperationException("Missing required configuration: Frontend:AllowedOrigins or Frontend:Url");
 if (string.IsNullOrWhiteSpace(postgresConnection))
     throw new InvalidOperationException("Missing required connection string: PostgreSQL");
 if (string.IsNullOrWhiteSpace(redisConnection))
     throw new InvalidOperationException("Missing required connection string: Redis");
-if (!File.Exists(firebaseConfigPath))
-    throw new InvalidOperationException($"Firebase service account file not found: {firebaseConfigPath}");
 
 FirebaseApp.Create(new AppOptions
 {
-    Credential = GoogleCredential.FromFile(firebaseConfigPath)
+    Credential = GoogleCredential.FromJson(firebaseAdminCredentials.Json)
 });
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddGameLogic();
@@ -63,14 +78,14 @@ builder.Services.AddScoped<IHealthStatusService, HealthStatusService>();
 builder.Services.AddSignalR()
     .AddStackExchangeRedis(redisConnection, options =>
     {
-        options.Configuration.ChannelPrefix = "Zootact";
+        options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("Zootact");
     });
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(frontendUrl)
+        policy.WithOrigins(frontendOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -80,7 +95,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 RegisterLifecycleLogging(app);
 
-await ApplyDatabaseSchemaPatchesAsync(app);
+await ApplyDatabaseMigrationsAsync(app);
 
 if (app.Environment.IsDevelopment())
 {
@@ -88,6 +103,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseSerilogRequestLogging(options =>
@@ -106,58 +122,29 @@ app.MapHub<GameHub>("/game-hub");
 
 app.Run();
 
-static async Task ApplyDatabaseSchemaPatchesAsync(WebApplication app)
+static void ConfigureUrls(WebApplicationBuilder builder)
+{
+    var explicitUrls = builder.Configuration["ASPNETCORE_URLS"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+    if (!string.IsNullOrWhiteSpace(explicitUrls))
+    {
+        return;
+    }
+
+    var port = builder.Configuration["PORT"] ?? Environment.GetEnvironmentVariable("PORT");
+    if (int.TryParse(port, out var parsedPort) && parsedPort > 0)
+    {
+        builder.WebHost.UseUrls($"http://0.0.0.0:{parsedPort}");
+    }
+}
+
+static async Task ApplyDatabaseMigrationsAsync(WebApplication app)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ZootactDbContext>();
+    var migrationIds = dbContext.Database.GetMigrations().ToArray();
 
-    await dbContext.Database.ExecuteSqlRawAsync("""
-        DO $$
-        DECLARE
-            current_email_length integer;
-            current_avatar_length integer;
-        BEGIN
-            SELECT character_maximum_length
-            INTO current_email_length
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'email';
-
-            SELECT character_maximum_length
-            INTO current_avatar_length
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'avatar_url';
-
-            IF COALESCE(current_email_length, 0) < 512 OR COALESCE(current_avatar_length, 0) < 2048 THEN
-                DROP VIEW IF EXISTS v_leaderboard;
-
-                ALTER TABLE users
-                    ALTER COLUMN email TYPE VARCHAR(512),
-                    ALTER COLUMN avatar_url TYPE VARCHAR(2048);
-
-                CREATE OR REPLACE VIEW v_leaderboard AS
-                SELECT
-                    u.id,
-                    u.username,
-                    u.avatar_url,
-                    u.forest_points,
-                    s.total_games,
-                    s.wins,
-                    s.losses,
-                    s.draws,
-                    CASE
-                        WHEN s.total_games > 0 THEN ROUND((s.wins::DECIMAL / s.total_games) * 100, 2)
-                        ELSE 0
-                    END AS win_rate,
-                    s.win_streak_best,
-                    s.win_streak_current
-                FROM users u
-                LEFT JOIN user_stats s ON u.id = s.user_id
-                WHERE u.is_banned = FALSE
-                ORDER BY u.forest_points DESC
-                LIMIT 100;
-            END IF;
-        END $$;
-        """);
+    await EfMigrationBootstrapper.EnsureLegacyMigrationBaselineAsync(dbContext.Database, migrationIds);
+    await dbContext.Database.MigrateAsync();
 }
 
 static void RegisterLifecycleLogging(WebApplication app)

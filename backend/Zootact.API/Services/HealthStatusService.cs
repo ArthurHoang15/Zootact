@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Zootact.Infrastructure.Data;
+using Zootact.Infrastructure.Services;
 
 namespace Zootact.API.Services;
 
@@ -27,9 +29,11 @@ public sealed class HealthStatusService(
     ZootactDbContext dbContext,
     IConnectionMultiplexer redis,
     IHttpClientFactory httpClientFactory,
-    IConfiguration configuration,
+    IOptions<AiServiceOptions> aiOptions,
     ILogger<HealthStatusService> logger) : IHealthStatusService
 {
+    private readonly AiServiceOptions _aiOptions = aiOptions.Value;
+
     public Task<HealthStatusResponse> GetLiveAsync()
     {
         return Task.FromResult(new HealthStatusResponse(
@@ -106,7 +110,12 @@ public sealed class HealthStatusService(
 
     private async Task<DependencyStatusResponse> CheckAiServiceAsync(CancellationToken cancellationToken)
     {
-        var baseUrl = configuration["AiService:BaseUrl"] ?? "http://localhost:8001";
+        if (!_aiOptions.Enabled)
+        {
+            return new DependencyStatusResponse("ai-service", true, "AI service disabled");
+        }
+
+        var baseUrl = _aiOptions.BaseUrl;
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(2));
 

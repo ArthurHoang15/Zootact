@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import { getSignalRUrl } from '@/config/runtime';
 import { navigateTo } from '@/router/navigation';
 import { routes } from '@/router/routes';
 import type {
@@ -33,7 +34,7 @@ class SignalRService {
 
     private buildConnection(accessToken: string): signalR.HubConnection {
         return new signalR.HubConnectionBuilder()
-            .withUrl('/game-hub', {
+            .withUrl(getSignalRUrl(), {
                 accessTokenFactory: () => accessToken,
                 transport: signalR.HttpTransportType.WebSockets,
             })

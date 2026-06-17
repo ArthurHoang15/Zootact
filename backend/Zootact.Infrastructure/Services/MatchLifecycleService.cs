@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Zootact.Core.Domain;
 using Zootact.Core.DTOs;
 using Zootact.Core.Interfaces;
@@ -16,9 +17,11 @@ public sealed class MatchLifecycleService(
     IGameStateRepository gameStateRepository,
     AiServiceClient aiServiceClient,
     IServiceScopeFactory serviceScopeFactory,
+    IOptions<AiServiceOptions> aiOptions,
     ILogger<MatchLifecycleService> logger) : IMatchLifecycleService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly AiServiceOptions _aiOptions = aiOptions.Value;
 
     public async Task RecordMoveAsync(Guid matchId, Guid playerId, Move move, int moveNumber, long timeSpentMs, long positionHash)
     {
@@ -82,9 +85,14 @@ public sealed class MatchLifecycleService(
 
         ApplyMatchResult(match, gameState);
         await UpdatePlayerStatsAsync(match, gameState);
-        await EnsureAnalysisRecordAsync(match.Id);
         await dbContext.SaveChangesAsync();
-        QueueAnalysisGeneration(match.Id, gameState);
+
+        if (_aiOptions.Enabled)
+        {
+            await EnsureAnalysisRecordAsync(match.Id);
+            await dbContext.SaveChangesAsync();
+            QueueAnalysisGeneration(match.Id, gameState);
+        }
 
         await gameStateRepository.ClearPlayerActiveMatchAsync(gameState.BluePlayerId);
         await gameStateRepository.ClearPlayerActiveMatchAsync(gameState.RedPlayerId);
@@ -102,6 +110,18 @@ public sealed class MatchLifecycleService(
         if (match is null)
         {
             return null;
+        }
+
+        if (!_aiOptions.Enabled)
+        {
+            return new MatchAnalysisResponse
+            {
+                MatchId = match.Id.ToString(),
+                Status = "Disabled",
+                Moves = [],
+                Summary = null,
+                AntiCheat = []
+            };
         }
 
         if (match.Analysis is null)

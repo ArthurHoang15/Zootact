@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores';
 import { fetchJson, isUnauthorizedApiError } from './apiErrors';
+import { getApiBaseUrl } from '@/config/runtime';
 import type {
     ActiveMatchResponse,
     LobbyActionResponse,
@@ -9,7 +10,7 @@ import type {
     PrivateLobbyDto,
 } from '@/types';
 
-const API_BASE = '/api';
+const API_BASE = getApiBaseUrl();
 
 class ApiService {
     private getHeaders(): HeadersInit {

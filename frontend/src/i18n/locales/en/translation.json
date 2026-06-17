@@ -84,6 +84,7 @@
         "opponentReconnected": "Opponent reconnected!",
         "timeOut": "Time's up!",
         "smartReplay": "Smart Replay",
+        "smartReplayDisabled": "Smart Replay is unavailable in this deployment.",
         "moveHistory": "Move History"
     },
     "pieces": {
@@ -142,10 +143,10 @@
     },
     "status": {
         "degradedTitle": "Server unavailable",
-        "degradedBody": "The local backend is temporarily unavailable. We will keep your session and retry automatically.",
+        "degradedBody": "The server is temporarily unavailable. We will keep your session and retry automatically.",
         "recoveringTitle": "Reconnecting",
-        "recoveringBody": "Trying to restore the backend connection and rehydrate your session.",
-        "actionsDisabled": "Live actions are temporarily disabled while the app reconnects to the local backend."
+        "recoveringBody": "Trying to restore the server connection and rehydrate your session.",
+        "actionsDisabled": "Live actions are temporarily disabled while the app reconnects to the server."
     },
     "rules": {
         "title": "Animal Chess Rules",
