@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "cd frontend && bun install --frozen-lockfile && bun run build",
     "dev:infra": "docker compose up -d",
     "dev:backend": "dotnet watch run --project backend/Zootact.API",
     "dev:frontend": "cd frontend && bun dev",
