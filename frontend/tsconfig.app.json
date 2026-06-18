@@ -23,7 +23,6 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"

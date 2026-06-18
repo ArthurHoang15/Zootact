@@ -1,27 +1,40 @@
 import * as signalR from '@microsoft/signalr';
+import { getSignalRUrl } from '@/config/runtime';
+import { navigateTo } from '@/router/navigation';
+import { routes } from '@/router/routes';
 import type {
     ChatMessageDto,
     GameEndedDto,
+    LobbyClosedDto,
+    LobbyCountdownStartedDto,
     MakeMoveRequest,
     MatchStartDto,
     MoveMadeDto,
     MoveResult,
+    PrivateLobbyDto,
     TimeSyncDto,
 } from '@/types';
-import { useGameStore } from '@/stores';
+import { useGameStore, useLobbyStore } from '@/stores';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+type ConnectFailureReason = 'unauthorized' | 'unavailable';
+
+interface ConnectResult {
+    connected: boolean;
+    reason?: ConnectFailureReason;
+}
 
 class SignalRService {
     private connection: signalR.HubConnection | null = null;
     private connectionState: ConnectionState = 'disconnected';
     private currentMatchId: string | null = null;
+    private currentLobbyId: string | null = null;
     private onStateChange?: (state: ConnectionState) => void;
-    private connectPromise: Promise<boolean> | null = null;
+    private connectPromise: Promise<ConnectResult> | null = null;
 
     private buildConnection(accessToken: string): signalR.HubConnection {
         return new signalR.HubConnectionBuilder()
-            .withUrl('/game-hub', {
+            .withUrl(getSignalRUrl(), {
                 accessTokenFactory: () => accessToken,
                 transport: signalR.HttpTransportType.WebSockets,
             })
@@ -35,9 +48,14 @@ class SignalRService {
             .build();
     }
 
-    async connect(accessToken: string): Promise<boolean> {
+    private classifyConnectionError(error: unknown): ConnectFailureReason {
+        const message = error instanceof Error ? error.message : String(error);
+        return /401|403|invalid or expired token/i.test(message) ? 'unauthorized' : 'unavailable';
+    }
+
+    async connect(accessToken: string): Promise<ConnectResult> {
         if (this.connection && this.connectionState === 'connected') {
-            return true;
+            return { connected: true };
         }
 
         if (this.connectPromise) {
@@ -51,13 +69,16 @@ class SignalRService {
             this.connectPromise = this.connection.start()
                 .then(() => {
                     this.setConnectionState('connected');
-                    return true;
+                    return { connected: true } as ConnectResult;
                 })
                 .catch(error => {
                     console.error('SignalR connection failed', error);
                     this.connection = null;
                     this.setConnectionState('disconnected');
-                    return false;
+                    return {
+                        connected: false,
+                        reason: this.classifyConnectionError(error),
+                    } as ConnectResult;
                 })
                 .finally(() => {
                     this.connectPromise = null;
@@ -68,7 +89,10 @@ class SignalRService {
             console.error('SignalR connection failed', error);
             this.connection = null;
             this.setConnectionState('disconnected');
-            return false;
+            return {
+                connected: false,
+                reason: this.classifyConnectionError(error),
+            };
         }
     }
 
@@ -82,6 +106,7 @@ class SignalRService {
             await this.connection.stop();
             this.connection = null;
             this.currentMatchId = null;
+            this.currentLobbyId = null;
         }
 
         this.setConnectionState('disconnected');
@@ -94,6 +119,32 @@ class SignalRService {
 
         await this.connection.invoke('JoinMatch', matchId);
         this.currentMatchId = matchId;
+    }
+
+    async joinLobby(lobbyId: string): Promise<void> {
+        if (!this.connection || this.connectionState !== 'connected') {
+            throw new Error('Not connected to SignalR hub');
+        }
+
+        await this.connection.invoke('JoinLobby', lobbyId);
+        this.currentLobbyId = lobbyId;
+    }
+
+    async leaveLobby(lobbyId?: string): Promise<void> {
+        if (!this.connection || this.connectionState !== 'connected') {
+            this.currentLobbyId = null;
+            return;
+        }
+
+        const targetLobbyId = lobbyId ?? this.currentLobbyId;
+        if (!targetLobbyId) {
+            return;
+        }
+
+        await this.connection.invoke('LeaveLobby', targetLobbyId);
+        if (this.currentLobbyId === targetLobbyId) {
+            this.currentLobbyId = null;
+        }
     }
 
     async makeMove(request: MakeMoveRequest): Promise<MoveResult> {
@@ -147,11 +198,14 @@ class SignalRService {
         }
 
         const gameStore = useGameStore.getState();
+        const lobbyStore = useLobbyStore.getState();
 
         this.connection.on('OnMatchStart', (data: MatchStartDto) => {
             gameStore.initMatch(data);
             gameStore.setConnected(true);
-            window.location.hash = '#/game';
+            this.currentLobbyId = null;
+            useLobbyStore.getState().clearLobby();
+            navigateTo(routes.game);
         });
 
         this.connection.on('OnMoveMade', (data: MoveMadeDto) => {
@@ -186,6 +240,25 @@ class SignalRService {
             gameStore.syncTime(data.blue_time_remaining_ms, data.red_time_remaining_ms);
         });
 
+        this.connection.on('OnLobbyUpdated', (data: PrivateLobbyDto) => {
+            lobbyStore.applyLobbyUpdate(data);
+        });
+
+        this.connection.on('OnLobbyCountdownStarted', (data: LobbyCountdownStartedDto) => {
+            lobbyStore.applyCountdownStarted(data);
+        });
+
+        this.connection.on('OnLobbyCountdownCanceled', (data: PrivateLobbyDto) => {
+            lobbyStore.applyLobbyUpdate(data);
+        });
+
+        this.connection.on('OnLobbyClosed', (data: LobbyClosedDto) => {
+            if (this.currentLobbyId === data.lobby_id) {
+                this.currentLobbyId = null;
+            }
+            lobbyStore.setLobbyClosed(data);
+        });
+
         this.connection.onreconnecting(() => {
             this.setConnectionState('reconnecting');
             gameStore.setConnected(false);
@@ -195,7 +268,14 @@ class SignalRService {
             this.setConnectionState('connected');
             gameStore.setConnected(true);
             if (this.currentMatchId) {
-                void this.joinMatch(this.currentMatchId);
+                void this.joinMatch(this.currentMatchId).catch(error => {
+                    console.error('Failed to rejoin match after reconnect', error);
+                });
+            }
+            if (this.currentLobbyId) {
+                void this.joinLobby(this.currentLobbyId).catch(error => {
+                    console.error('Failed to rejoin lobby after reconnect', error);
+                });
             }
         });
 

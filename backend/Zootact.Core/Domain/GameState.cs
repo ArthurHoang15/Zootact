@@ -130,13 +130,25 @@ public sealed class GameState
         Guid redPlayerId,
         TimeControlPreset preset)
     {
+        return Create(matchId, bluePlayerId, redPlayerId, TimeControl.FromPreset(preset));
+    }
+
+    /// <summary>
+    /// Creates a new game state with a supplied time control.
+    /// </summary>
+    public static GameState Create(
+        Guid matchId,
+        Guid bluePlayerId,
+        Guid redPlayerId,
+        TimeControl timeControl)
+    {
         return new GameState
         {
             MatchId = matchId,
             BluePlayerId = bluePlayerId,
             RedPlayerId = redPlayerId,
             Board = Board.CreateInitialBoard(),
-            TimeControl = TimeControl.FromPreset(preset),
+            TimeControl = timeControl,
             CreatedAt = DateTimeOffset.UtcNow
         };
     }

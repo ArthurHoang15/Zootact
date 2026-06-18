@@ -218,6 +218,12 @@ public sealed class MoveValidator : IMoveValidator
         // Cannot capture own pieces
         if (attacker.Owner == defender.Owner)
             return MoveValidationResult.Invalid("FriendlyFire", "Cannot capture your own piece.");
+
+        var attackerInRiver = BoardConstants.IsRiver(from);
+        var defenderInRiver = BoardConstants.IsRiver(to);
+
+        if (attackerInRiver != defenderInRiver)
+            return MoveValidationResult.Invalid("RiverLandCapture", "Pieces in river cannot capture pieces on land, and vice versa.");
         
         // Get effective ranks (considering trap effects)
         var attackerRank = GetEffectiveRank(attacker, from);
@@ -226,7 +232,7 @@ public sealed class MoveValidator : IMoveValidator
         // Special rule: Rat from river CANNOT capture Elephant on land
         if (attacker.Type == PieceType.Rat && defender.Type == PieceType.Elephant)
         {
-            if (BoardConstants.IsRiver(from))
+            if (attackerInRiver)
                 return MoveValidationResult.Invalid("RatFromRiver", "Rat cannot capture Elephant from the river.");
             // Rat on land CAN capture Elephant
             return MoveValidationResult.Valid();
@@ -235,18 +241,6 @@ public sealed class MoveValidator : IMoveValidator
         // Special rule: Elephant CANNOT capture Rat
         if (attacker.Type == PieceType.Elephant && defender.Type == PieceType.Rat)
             return MoveValidationResult.Invalid("ElephantVsRat", "Elephant cannot capture the Rat.");
-        
-        // Special rule: Rat in river cannot capture anything on land
-        // (except this is handled by the movement rules - rat must exit first)
-        if (attacker.Type == PieceType.Rat && BoardConstants.IsRiver(from) && !BoardConstants.IsRiver(to))
-        {
-            // Rat exiting river - can only capture if normal rank rules apply
-            // But rat in river has effective rank 0 for capturing land pieces? 
-            // Actually, the rule is simpler: Rat can capture pieces on land when exiting river
-            // The restriction is only for Rat→Elephant from river
-            if (defender.Type != PieceType.Rat && defenderRank > 1)
-                return MoveValidationResult.Invalid("RatCantCapture", "Rat cannot capture from river to land.");
-        }
         
         // Normal capture: Higher rank captures lower rank
         // Note: When defender is in attacker's trap, defender rank is 0

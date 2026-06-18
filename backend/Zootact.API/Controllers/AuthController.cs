@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
+using Zootact.Core.Domain;
 using Zootact.Core.DTOs;
 using Zootact.Infrastructure.Data;
 using Zootact.Infrastructure.Data.Entities;
@@ -16,6 +18,8 @@ public class AuthController(
     ZootactDbContext dbContext,
     ILogger<AuthController> logger) : ControllerBase
 {
+    private static readonly Regex UsernameRegex = new("^[a-z0-9]{3,50}$", RegexOptions.CultureInvariant);
+
     private static UserDto MapUserDto(UserEntity user) => new()
     {
         Id = user.Id.ToString(),
@@ -41,6 +45,45 @@ public class AuthController(
             BestStreak = stats?.WinStreakBest ?? 0,
             AvgMoveTimeMs = stats?.AvgMoveTimeMs,
             TotalPlayTimeMs = stats?.TotalPlayTimeMs ?? 0
+        };
+    }
+
+    private static UserStatsDto MapFriendlyStatsDto(
+        IReadOnlyList<(bool Won, bool Draw, long DurationMs)> matches)
+    {
+        var totalGames = matches.Count;
+        var wins = matches.Count(match => match.Won);
+        var draws = matches.Count(match => match.Draw);
+        var losses = totalGames - wins - draws;
+        var totalPlayTimeMs = matches.Sum(match => match.DurationMs);
+
+        var currentStreak = 0;
+        var bestStreak = 0;
+
+        foreach (var match in matches)
+        {
+            if (match.Won)
+            {
+                currentStreak++;
+                bestStreak = Math.Max(bestStreak, currentStreak);
+            }
+            else
+            {
+                currentStreak = 0;
+            }
+        }
+
+        return new UserStatsDto
+        {
+            TotalGames = totalGames,
+            Wins = wins,
+            Losses = losses,
+            Draws = draws,
+            WinRate = totalGames == 0 ? 0 : Math.Round((decimal)wins / totalGames * 100, 1),
+            CurrentStreak = currentStreak,
+            BestStreak = bestStreak,
+            AvgMoveTimeMs = null,
+            TotalPlayTimeMs = totalPlayTimeMs
         };
     }
 
@@ -157,9 +200,18 @@ public class AuthController(
         try
         {
             // Check if username is taken
-            if (!string.IsNullOrWhiteSpace(request.Username))
+            if (request.Username is not null)
             {
-                var normalizedUsername = request.Username.Trim();
+                var normalizedUsername = request.Username.Trim().ToLowerInvariant();
+                if (!UsernameRegex.IsMatch(normalizedUsername))
+                {
+                    return BadRequest(new ErrorResponse
+                    {
+                        Error = "InvalidUsername",
+                        Message = "Username must be 3-50 lowercase letters or digits."
+                    });
+                }
+
                 if (normalizedUsername == user.Username)
                 {
                     return Ok(await BuildProfileResponseAsync(user.Id));
@@ -203,26 +255,48 @@ public class AuthController(
             .Include(u => u.Stats)
             .FirstAsync(u => u.Id == userId);
 
-        var recentMatches = await dbContext.Matches
-            .Include(m => m.BluePlayer)
-            .Include(m => m.RedPlayer)
+        var completedMatchesQuery = dbContext.Matches
             .Where(m =>
                 m.Status == "Completed" &&
                 (m.BluePlayerId == dbUser.Id || m.RedPlayerId == dbUser.Id))
-            .OrderByDescending(m => m.EndedAt ?? m.StartedAt)
+            .OrderByDescending(m => m.EndedAt ?? m.StartedAt);
+
+        var recentMatches = await completedMatchesQuery
+            .Include(m => m.BluePlayer)
+            .Include(m => m.RedPlayer)
             .Take(5)
             .ToListAsync();
+
+        var friendlyMatchRows = await completedMatchesQuery
+            .Where(match => match.TimeControl.StartsWith("Friendly:"))
+            .Select(match => new
+            {
+                match.WinnerId,
+                match.StartedAt,
+                match.EndedAt
+            })
+            .ToListAsync();
+
+        var friendlyMatches = friendlyMatchRows
+            .Select(match => (
+                Won: match.WinnerId == dbUser.Id,
+                Draw: match.WinnerId == null,
+                DurationMs: Math.Max(0, (long)((match.EndedAt ?? match.StartedAt) - match.StartedAt).TotalMilliseconds)
+            ))
+            .ToList();
 
         return new MyProfileDto
         {
             User = MapUserDto(dbUser),
             Stats = MapStatsDto(dbUser.Stats),
+            FriendlyStats = MapFriendlyStatsDto(friendlyMatches),
             RecentMatches = recentMatches.Select(match =>
             {
                 var isBlue = match.BluePlayerId == dbUser.Id;
                 var opponent = isBlue ? match.RedPlayer : match.BluePlayer;
                 var eloBefore = isBlue ? match.BlueEloBefore : match.RedEloBefore;
                 var eloAfter = isBlue ? (match.BlueEloAfter ?? match.BlueEloBefore) : (match.RedEloAfter ?? match.RedEloBefore);
+                var matchMode = MatchTypeMetadata.Parse(match.TimeControl);
                 var outcome = match.WinnerId == null
                     ? "Draw"
                     : match.WinnerId == dbUser.Id
@@ -232,13 +306,14 @@ public class AuthController(
                 return new RecentProfileMatchDto
                 {
                     MatchId = match.Id.ToString(),
-                    TimeControl = match.TimeControl,
+                    MatchType = matchMode.ToString(),
+                    TimeControl = MatchTypeMetadata.GetDisplayTimeControl(match.TimeControl),
                     Outcome = outcome,
                     ResultReason = match.ResultReason ?? "Unknown",
                     OpponentUsername = opponent.Username,
                     OpponentAvatarUrl = opponent.AvatarUrl,
                     EndedAt = match.EndedAt,
-                    EloChange = eloAfter - eloBefore
+                    EloChange = matchMode == MatchMode.Friendly ? 0 : eloAfter - eloBefore
                 };
             }).ToList()
         };

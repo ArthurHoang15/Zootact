@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, Card, CuteButton, CuteInput, LanguageSwitcher } from '@/components/ui';
+import { isBackendUnavailableError } from '@/services/apiErrors';
 import { apiService } from '@/services';
+import { routes } from '@/router/routes';
 import { useAuthStore } from '@/stores';
 import type { MyProfileDto, RecentProfileMatchDto, UserStatsDto } from '@/types';
+import type { TFunction } from 'i18next';
 
 const emptyStats: UserStatsDto = {
     total_games: 0,
@@ -54,6 +58,25 @@ function formatMatchDate(value: string | null) {
     }).format(new Date(value));
 }
 
+function formatMatchTimeControl(value: string, t: TFunction) {
+    switch (value) {
+        case 'Blitz':
+            return t('matchmaking.blitz');
+        case 'Rapid':
+            return t('matchmaking.rapid');
+        case 'Classical':
+            return t('matchmaking.classical');
+        case 'Untimed':
+            return t('lobby.untimedMode');
+        default:
+            return value;
+    }
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+    return error instanceof Error ? error.message : fallback;
+}
+
 function outcomeClasses(outcome: RecentProfileMatchDto['outcome']) {
     switch (outcome) {
         case 'Win':
@@ -66,9 +89,18 @@ function outcomeClasses(outcome: RecentProfileMatchDto['outcome']) {
     }
 }
 
+function matchTypeClasses(matchType: RecentProfileMatchDto['match_type']) {
+    return matchType === 'Friendly'
+        ? 'bg-carrot-orange/15 text-carrot-orange-dark'
+        : 'bg-forest-light/10 text-forest-dark';
+}
+
 export function ProfilePage() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+    const backendStatus = useAuthStore(state => state.backendStatus);
+    const markBackendDegraded = useAuthStore(state => state.markBackendDegraded);
     const authUser = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const setUser = useAuthStore(state => state.setUser);
@@ -81,7 +113,7 @@ export function ProfilePage() {
 
     useEffect(() => {
         if (!isAuthenticated) {
-            window.location.hash = '#/login';
+            navigate(routes.login, { replace: true });
             return;
         }
 
@@ -100,9 +132,12 @@ export function ProfilePage() {
                 setProfile(response);
                 setUsername(response.user.username);
                 setUser(response.user);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (!cancelled) {
-                    setError(err.message ?? t('common.error'));
+                    if (isBackendUnavailableError(err)) {
+                        markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+                    }
+                    setError(getErrorMessage(err, t('common.error')));
                 }
             } finally {
                 if (!cancelled) {
@@ -116,7 +151,7 @@ export function ProfilePage() {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, setUser, t]);
+    }, [isAuthenticated, markBackendDegraded, navigate, setUser, t]);
 
     async function handleSaveProfile() {
         if (!username.trim()) {
@@ -134,8 +169,11 @@ export function ProfilePage() {
             setUsername(response.user.username);
             setUser(response.user);
             setSuccess(t('profile.saveSuccess'));
-        } catch (err: any) {
-            setError(err.message ?? t('common.error'));
+        } catch (err: unknown) {
+            if (isBackendUnavailableError(err)) {
+                markBackendDegraded(getErrorMessage(err, t('status.degradedBody')));
+            }
+            setError(getErrorMessage(err, t('common.error')));
         } finally {
             setIsSaving(false);
         }
@@ -147,6 +185,7 @@ export function ProfilePage() {
 
     const currentUser = profile?.user ?? authUser;
     const stats = profile?.stats ?? emptyStats;
+    const friendlyStats = profile?.friendly_stats ?? emptyStats;
     const recentMatches = profile?.recent_matches ?? [];
 
     return (
@@ -154,7 +193,7 @@ export function ProfilePage() {
             <header className="relative overflow-hidden bg-gradient-to-br from-sky-blue via-candy-green to-cream px-4 py-8">
                 <div className="mx-auto flex max-w-6xl items-start justify-between gap-4">
                     <div>
-                        <button className="text-sm font-bold text-white/90" onClick={() => { window.location.hash = '#/'; }}>
+                        <button className="text-sm font-bold text-white/90" onClick={() => navigate(routes.home)}>
                             {t('profile.goHome')}
                         </button>
                         <h1 className="mt-3 font-display text-5xl text-white">{t('nav.profile')}</h1>
@@ -221,7 +260,7 @@ export function ProfilePage() {
                                     {error && <p className="text-sm font-bold text-player-red">{error}</p>}
                                     {success && <p className="text-sm font-bold text-candy-green-dark">{success}</p>}
                                     <div className="flex gap-3">
-                                        <CuteButton onClick={() => void handleSaveProfile()} isLoading={isSaving}>
+                                        <CuteButton onClick={() => void handleSaveProfile()} isLoading={isSaving} disabled={backendStatus !== 'healthy'}>
                                             {t('common.save')}
                                         </CuteButton>
                                         <CuteButton
@@ -238,23 +277,56 @@ export function ProfilePage() {
                                 </div>
                             </Card>
 
-                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                                {[
-                                    [t('profile.totalGames'), stats.total_games],
-                                    [t('profile.wins'), stats.wins],
-                                    [t('profile.losses'), stats.losses],
-                                    [t('profile.draws'), stats.draws],
-                                    [t('profile.winRate'), `${stats.win_rate}%`],
-                                    [t('profile.currentStreak'), stats.current_streak],
-                                    [t('profile.bestStreak'), stats.best_streak],
-                                    [t('profile.avgMoveTime'), formatAverageMoveTime(stats.avg_move_time_ms)],
-                                    [t('profile.totalPlayTime'), formatPlayTime(stats.total_play_time_ms)],
-                                ].map(([label, value]) => (
-                                    <Card key={label as string} padding="md" className="bg-white">
-                                        <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{label}</p>
-                                        <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
-                                    </Card>
-                                ))}
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="font-display text-2xl text-forest-dark">{t('profile.stats')}</h3>
+                                    <p className="mt-1 text-sm text-forest-light">{t('profile.ratedStatsHint', 'Rated match performance affects your Forest Points.')}</p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    {[
+                                        [t('profile.totalGames'), stats.total_games],
+                                        [t('profile.wins'), stats.wins],
+                                        [t('profile.losses'), stats.losses],
+                                        [t('profile.draws'), stats.draws],
+                                        [t('profile.winRate'), `${stats.win_rate}%`],
+                                        [t('profile.currentStreak'), stats.current_streak],
+                                        [t('profile.bestStreak'), stats.best_streak],
+                                        [t('profile.avgMoveTime'), formatAverageMoveTime(stats.avg_move_time_ms)],
+                                        [t('profile.totalPlayTime'), formatPlayTime(stats.total_play_time_ms)],
+                                    ].map(([label, value]) => (
+                                        <Card key={label as string} padding="md" className="bg-white">
+                                            <p className="text-sm font-bold uppercase tracking-[0.12em] text-forest-light">{label}</p>
+                                            <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <h3 className="font-display text-2xl text-forest-dark">{t('profile.friendlyStatsTitle', 'Friendly Match Stats')}</h3>
+                                    <p className="mt-1 text-sm text-forest-light">{t('profile.friendlyStatsHint', 'Friendly matches are tracked in history but do not change your Elo.')}</p>
+                                </div>
+
+                                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                    {[
+                                        [t('profile.totalGames'), friendlyStats.total_games],
+                                        [t('profile.wins'), friendlyStats.wins],
+                                        [t('profile.losses'), friendlyStats.losses],
+                                        [t('profile.draws'), friendlyStats.draws],
+                                        [t('profile.winRate'), `${friendlyStats.win_rate}%`],
+                                        [t('profile.currentStreak'), friendlyStats.current_streak],
+                                        [t('profile.bestStreak'), friendlyStats.best_streak],
+                                        [t('profile.avgMoveTime'), formatAverageMoveTime(friendlyStats.avg_move_time_ms)],
+                                        [t('profile.totalPlayTime'), formatPlayTime(friendlyStats.total_play_time_ms)],
+                                    ].map(([label, value]) => (
+                                        <Card key={`friendly-${label as string}`} padding="md" className="bg-carrot-orange/5">
+                                            <p className="text-sm font-bold uppercase tracking-[0.12em] text-carrot-orange-dark">{label}</p>
+                                            <p className="mt-3 font-display text-3xl text-forest-dark">{value as string | number}</p>
+                                        </Card>
+                                    ))}
+                                </div>
                             </div>
                         </motion.section>
 
@@ -286,20 +358,33 @@ export function ProfilePage() {
                                                     <div>
                                                         <p className="font-display text-xl text-forest-dark">{match.opponent_username}</p>
                                                         <p className="text-sm text-forest-light">
-                                                            {match.time_control} · {formatMatchDate(match.ended_at)}
+                                                            {formatMatchTimeControl(match.time_control, t)} · {formatMatchDate(match.ended_at)}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${outcomeClasses(match.outcome)}`}>
-                                                    {t(`profile.outcome${match.outcome}`)}
-                                                </span>
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${matchTypeClasses(match.match_type)}`}>
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.friendlyMatch', 'Friendly')
+                                                            : t('profile.ratedMatch', 'Rated')}
+                                                    </span>
+                                                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${outcomeClasses(match.outcome)}`}>
+                                                        {t(`profile.outcome${match.outcome}`)}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                                                 <div className="rounded-2xl bg-white px-3 py-2">
-                                                    <p className="text-forest-light">{t('profile.eloChange')}</p>
-                                                    <p className={`mt-1 font-bold ${match.elo_change >= 0 ? 'text-candy-green-dark' : 'text-player-red-dark'}`}>
-                                                        {match.elo_change >= 0 ? '+' : ''}{match.elo_change}
+                                                    <p className="text-forest-light">
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.friendlyEloLabel', 'Elo impact')
+                                                            : t('profile.eloChange')}
+                                                    </p>
+                                                    <p className={`mt-1 font-bold ${match.match_type === 'Friendly' || match.elo_change >= 0 ? 'text-candy-green-dark' : 'text-player-red-dark'}`}>
+                                                        {match.match_type === 'Friendly'
+                                                            ? t('profile.noEloChange', 'No Elo change')
+                                                            : `${match.elo_change >= 0 ? '+' : ''}${match.elo_change}`}
                                                     </p>
                                                 </div>
                                                 <div className="rounded-2xl bg-white px-3 py-2">

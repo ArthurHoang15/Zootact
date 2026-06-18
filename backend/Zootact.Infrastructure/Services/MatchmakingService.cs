@@ -15,6 +15,7 @@ public sealed class MatchmakingService(
     IConnectionMultiplexer redis,
     ZootactDbContext dbContext,
     IGameStateRepository gameStateRepository,
+    IPrivateLobbyRepository privateLobbyRepository,
     ILogger<MatchmakingService> logger) : IMatchmakingService
 {
     private IDatabase Db => redis.GetDatabase();
@@ -26,6 +27,11 @@ public sealed class MatchmakingService(
     /// <inheritdoc />
     public async Task<Guid?> JoinQueueAsync(Guid userId, TimeControlPreset preset)
     {
+        if (preset == TimeControlPreset.Untimed)
+        {
+            throw new InvalidOperationException("Untimed matches are not available in public matchmaking.");
+        }
+
         var queueLockKey = GetQueueLockKey(preset);
         var lockToken = Guid.NewGuid().ToString("N");
         var lockAcquired = false;
@@ -47,6 +53,12 @@ public sealed class MatchmakingService(
 
         try
         {
+            var activeLobby = await privateLobbyRepository.GetPlayerActiveLobbyAsync(userId);
+            if (activeLobby is not null)
+            {
+                throw new InvalidOperationException("Leave your private lobby before joining matchmaking.");
+            }
+
             var activeMatch = await gameStateRepository.GetPlayerActiveMatchAsync(userId);
             if (activeMatch is not null)
             {
@@ -149,8 +161,33 @@ public sealed class MatchmakingService(
     }
 
     /// <inheritdoc />
-    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset)
+    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
     {
+        if (preset == TimeControlPreset.Untimed && matchMode == MatchMode.Rated)
+        {
+            throw new InvalidOperationException("Untimed matches must be friendly.");
+        }
+
+        return await CreateMatchAsync(
+            bluePlayerId,
+            redPlayerId,
+            TimeControl.FromPreset(preset),
+            MatchTypeMetadata.EncodeTimeControl(preset, matchMode));
+    }
+
+    /// <inheritdoc />
+    public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControl timeControl, string storedTimeControl)
+    {
+        if (storedTimeControl != MatchTypeMetadata.EncodeTimeControl(timeControl, MatchTypeMetadata.Parse(storedTimeControl)))
+        {
+            throw new InvalidOperationException("Stored time control does not match the runtime time control.");
+        }
+
+        if (timeControl.Preset == TimeControlPreset.Untimed && MatchTypeMetadata.Parse(storedTimeControl) == MatchMode.Rated)
+        {
+            throw new InvalidOperationException("Untimed matches must be stored as friendly.");
+        }
+
         var blueUser = await dbContext.Users.FindAsync(bluePlayerId);
         var redUser = await dbContext.Users.FindAsync(redPlayerId);
 
@@ -160,19 +197,18 @@ public sealed class MatchmakingService(
         }
 
         var matchId = Guid.NewGuid();
-        var gameState = GameState.Create(matchId, bluePlayerId, redPlayerId, preset);
+        var gameState = GameState.Create(matchId, bluePlayerId, redPlayerId, timeControl);
 
         await gameStateRepository.SaveGameStateAsync(gameState);
         await gameStateRepository.SetPlayerActiveMatchAsync(bluePlayerId, matchId);
         await gameStateRepository.SetPlayerActiveMatchAsync(redPlayerId, matchId);
 
-        var timeControl = TimeControl.FromPreset(preset);
         var match = new MatchEntity
         {
             Id = matchId,
             BluePlayerId = bluePlayerId,
             RedPlayerId = redPlayerId,
-            TimeControl = preset.ToString(),
+            TimeControl = storedTimeControl,
             InitialTimeMs = timeControl.InitialTimeMs,
             IncrementMs = timeControl.IncrementMs,
             Status = "InProgress",

@@ -135,10 +135,20 @@ public sealed class RedisGameStateRepository(IConnectionMultiplexer redis) : IGa
     }
     
     /// <inheritdoc />
-    public async Task ClearPlayerConnectionAsync(Guid userId)
+    public async Task ClearPlayerConnectionAsync(Guid userId, string connectionId)
     {
-        var key = PlayerConnectionKey(userId);
-        await Db.KeyDeleteAsync(key);
+        var key = (RedisKey)PlayerConnectionKey(userId);
+        const string compareAndDeleteScript = """
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            end
+            return 0
+            """;
+
+        await Db.ScriptEvaluateAsync(
+            compareAndDeleteScript,
+            [key],
+            [(RedisValue)connectionId]);
     }
     
     /// <summary>

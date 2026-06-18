@@ -1,0 +1,91 @@
+services:
+  reverse-proxy:
+    image: caddy:2.8-alpine
+    container_name: zootact-caddy
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - zootact-production
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Zootact.API/Dockerfile
+    container_name: zootact-backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ConnectionStrings__PostgreSQL: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      Frontend__AllowedOrigins: ${FRONTEND_ALLOWED_ORIGINS}
+      Firebase__ServiceAccountJsonBase64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64}
+      AiService__Enabled: ${AI_SERVICE_ENABLED:-false}
+      AiService__BaseUrl: ${AI_SERVICE_BASE_URL:-http://ai-service:8001}
+      ForwardedHeaders__KnownProxies__0: ${CADDY_INTERNAL_IP:-172.18.0.2}
+      Logging__EnableFileSink: "false"
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - zootact-production
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: zootact-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zootact-production
+
+  redis:
+    image: redis:7-alpine
+    container_name: zootact-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zootact-production
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+
+networks:
+  zootact-production:
+    driver: bridge

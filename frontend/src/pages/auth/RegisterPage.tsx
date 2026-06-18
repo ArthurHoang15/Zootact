@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { AuthLayout } from './AuthLayout';
 import { CuteInput, CuteButton } from '@/components/ui';
+import { routes } from '@/router/routes';
 import { useAuthStore } from '@/stores';
+import { navigateAfterAuth } from '@/utils';
 
 export function RegisterPage() {
   const { t } = useTranslation();
@@ -36,8 +39,8 @@ export function RegisterPage() {
 
     try {
       await registerWithEmail(formData.email, formData.password, formData.username);
-      window.location.hash = '#/';
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
@@ -108,9 +111,9 @@ export function RegisterPage() {
         <div className="text-center mt-4">
           <p className="text-sm text-forest-light">
             {t('auth.hasAccount', "Already have an account?")}{' '}
-            <a href="#/login" className="text-candy-green hover:underline font-bold">
+            <Link to={routes.login} className="text-candy-green hover:underline font-bold">
               {t('auth.loginLink', 'Login')}
-            </a>
+            </Link>
           </p>
         </div>
       </form>

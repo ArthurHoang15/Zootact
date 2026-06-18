@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Board, GameEndModal, MoveHistory, PlayerInfo } from '@/components/game';
+import { useNavigate } from 'react-router-dom';
+import { isAiAnalysisEnabled } from '@/config/runtime';
+import { Board, GameEndModal, MoveHistory, PlayerInfo, RulesModal } from '@/components/game';
 import { CuteButton, LanguageSwitcher } from '@/components/ui';
+import { routes } from '@/router/routes';
 import { apiService, signalRService } from '@/services';
-import { useGameStore } from '@/stores';
+import { useAuthStore, useGameStore } from '@/stores';
 import { sanitizeText } from '@/utils';
 import type { PositionDto } from '@/types';
 
 export function GamePage() {
     const { t } = useTranslation();
+    const navigate = useNavigate();
+    const backendStatus = useAuthStore(state => state.backendStatus);
     const matchId = useGameStore(state => state.matchId);
     const board = useGameStore(state => state.board);
     const chatMessages = useGameStore(state => state.chatMessages);
@@ -25,7 +30,10 @@ export function GamePage() {
     const updateDisconnectCountdown = useGameStore(state => state.updateDisconnectCountdown);
     const [chatInput, setChatInput] = useState('');
     const [isResigning, setIsResigning] = useState(false);
+    const [isRulesOpen, setIsRulesOpen] = useState(false);
+    const aiAnalysisEnabled = isAiAnalysisEnabled();
     const hasActiveBoard = Boolean(matchId && board);
+    const canUseLiveActions = hasActiveBoard && backendStatus === 'healthy';
 
     useEffect(() => {
         if (!matchId) {
@@ -49,7 +57,10 @@ export function GamePage() {
     }, [matchId]);
 
     useEffect(() => {
-        if (!isGameOver || !matchId) {
+        if (!isGameOver || !matchId || !aiAnalysisEnabled) {
+            if (isGameOver && !aiAnalysisEnabled) {
+                setAnalysisStatus('Disabled');
+            }
             return;
         }
 
@@ -57,7 +68,7 @@ export function GamePage() {
         void apiService.getMatchAnalysis(matchId)
             .then(response => setAnalysis(response))
             .catch(() => setAnalysisStatus('Failed'));
-    }, [isGameOver, matchId, setAnalysis, setAnalysisStatus]);
+    }, [aiAnalysisEnabled, isGameOver, matchId, setAnalysis, setAnalysisStatus]);
 
     useEffect(() => {
         if (!isOpponentDisconnected || disconnectCountdown <= 0 || isGameOver) {
@@ -72,6 +83,10 @@ export function GamePage() {
     }, [disconnectCountdown, isGameOver, isOpponentDisconnected, updateDisconnectCountdown]);
 
     async function handleMove(from: PositionDto, to: PositionDto) {
+        if (!canUseLiveActions) {
+            return;
+        }
+
         const result = await signalRService.makeMove({
             from_row: from.row,
             from_col: from.col,
@@ -85,6 +100,10 @@ export function GamePage() {
     }
 
     async function handleChatSubmit() {
+        if (!canUseLiveActions) {
+            return;
+        }
+
         const message = sanitizeText(chatInput).trim();
         if (!message) {
             return;
@@ -96,6 +115,10 @@ export function GamePage() {
 
     async function handleResign() {
         if (isResigning) {
+            return;
+        }
+
+        if (!canUseLiveActions) {
             return;
         }
 
@@ -116,10 +139,20 @@ export function GamePage() {
         <div className="min-h-screen bg-cream">
             <header className="bg-gradient-to-r from-candy-green to-candy-green-light shadow-cute">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-                    <button className="font-display text-2xl text-white" onClick={() => { window.location.hash = '#/'; }}>
+                    <button className="font-display text-2xl text-white" onClick={() => navigate(routes.home)}>
                         Zootact
                     </button>
-                    <LanguageSwitcher />
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="flex h-11 min-w-11 items-center justify-center rounded-2xl bg-white/90 px-3 font-display text-xl text-forest-dark shadow-cute"
+                            aria-label={t('rules.helpIconLabel')}
+                            onClick={() => setIsRulesOpen(true)}
+                        >
+                            <span>?</span>
+                            <span className="ml-2 hidden text-sm font-bold md:inline">{t('rules.panelTitle')}</span>
+                        </button>
+                        <LanguageSwitcher />
+                    </div>
                 </div>
             </header>
 
@@ -135,7 +168,7 @@ export function GamePage() {
                     </div>
 
                     <div className="w-full max-w-md">
-                        <Board onMove={handleMove} />
+                        <Board onMove={canUseLiveActions ? handleMove : undefined} />
                     </div>
 
                     <div className="w-full max-w-sm lg:hidden">
@@ -156,10 +189,10 @@ export function GamePage() {
                         <div className="rounded-2xl bg-white p-4 shadow-cute">
                             <p className="font-display">{t('game.drawOffered', { player: drawOfferedBy })}</p>
                             <div className="mt-3 flex gap-2">
-                                <CuteButton size="sm" onClick={() => void signalRService.acceptDraw().then(() => setDrawOffered(null))}>
+                                <CuteButton size="sm" onClick={() => void signalRService.acceptDraw().then(() => setDrawOffered(null))} disabled={!canUseLiveActions}>
                                     {t('game.acceptDraw')}
                                 </CuteButton>
-                                <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.declineDraw().then(() => setDrawOffered(null))}>
+                                <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.declineDraw().then(() => setDrawOffered(null))} disabled={!canUseLiveActions}>
                                     {t('game.declineDraw')}
                                 </CuteButton>
                             </div>
@@ -168,10 +201,10 @@ export function GamePage() {
 
                     {!isGameOver && hasActiveBoard && (
                         <div className="flex gap-3">
-                            <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.offerDraw()}>
+                            <CuteButton size="sm" variant="ghost" onClick={() => void signalRService.offerDraw()} disabled={!canUseLiveActions}>
                                 {t('game.offerDraw')}
                             </CuteButton>
-                            <CuteButton size="sm" variant="danger" onClick={() => void handleResign()} disabled={isResigning}>
+                            <CuteButton size="sm" variant="danger" onClick={() => void handleResign()} disabled={isResigning || !canUseLiveActions}>
                                 {t('game.resign')}
                             </CuteButton>
                         </div>
@@ -193,7 +226,7 @@ export function GamePage() {
                             <input
                                 className="flex-1 rounded-2xl border border-forest-light/20 px-3 py-2"
                                 value={chatInput}
-                                disabled={!hasActiveBoard}
+                                disabled={!canUseLiveActions}
                                 onChange={event => setChatInput(event.target.value)}
                                 onKeyDown={event => {
                                     if (event.key === 'Enter') {
@@ -201,22 +234,28 @@ export function GamePage() {
                                     }
                                 }}
                             />
-                            <CuteButton size="sm" onClick={() => void handleChatSubmit()} disabled={!hasActiveBoard}>
+                            <CuteButton size="sm" onClick={() => void handleChatSubmit()} disabled={!canUseLiveActions}>
                                 Send
                             </CuteButton>
                         </div>
+                        {!canUseLiveActions && (
+                            <p className="mt-3 text-sm text-forest-light">{t('status.actionsDisabled')}</p>
+                        )}
                     </div>
 
                     <div className="rounded-2xl bg-white p-4 shadow-cute">
                         <h3 className="font-display text-xl text-forest-dark">{t('game.smartReplay')}</h3>
-                        {!isGameOver && <p className="mt-2 text-sm text-forest-light">{t('game.waiting')}</p>}
-                        {isGameOver && analysisStatus === 'Pending' && (
+                        {!aiAnalysisEnabled && (
+                            <p className="mt-2 text-sm text-forest-light">{t('game.smartReplayDisabled')}</p>
+                        )}
+                        {aiAnalysisEnabled && !isGameOver && <p className="mt-2 text-sm text-forest-light">{t('analysis.availableAfterGameEnds')}</p>}
+                        {aiAnalysisEnabled && isGameOver && analysisStatus === 'Pending' && (
                             <p className="mt-2 text-sm text-forest-light">{t('common.loading')}</p>
                         )}
-                        {isGameOver && analysisStatus === 'Failed' && (
+                        {aiAnalysisEnabled && isGameOver && analysisStatus === 'Failed' && (
                             <p className="mt-2 text-sm text-player-red">{t('common.error')}</p>
                         )}
-                        {analysis?.summary && (
+                        {aiAnalysisEnabled && analysis?.summary && (
                             <div className="mt-3 space-y-3 text-sm">
                                 <p>Blue accuracy: {analysis.summary.accuracy_blue}%</p>
                                 <p>Red accuracy: {analysis.summary.accuracy_red}%</p>
@@ -236,7 +275,12 @@ export function GamePage() {
                 </aside>
             </main>
 
-            <GameEndModal onNewGame={() => { window.location.hash = '#/'; }} />
+            <GameEndModal onNewGame={() => navigate(routes.home)} />
+            <RulesModal
+                open={isRulesOpen}
+                onClose={() => setIsRulesOpen(false)}
+                onOpenPage={() => navigate(routes.rules)}
+            />
         </div>
     );
 }

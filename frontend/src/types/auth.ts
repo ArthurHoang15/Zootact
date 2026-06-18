@@ -27,6 +27,7 @@ export interface UserStatsDto {
 
 export interface RecentProfileMatchDto {
     match_id: string;
+    match_type: 'Friendly' | 'Rated';
     time_control: string;
     outcome: 'Win' | 'Loss' | 'Draw';
     result_reason: string;
@@ -39,6 +40,7 @@ export interface RecentProfileMatchDto {
 export interface MyProfileDto {
     user: UserDto;
     stats: UserStatsDto;
+    friendly_stats: UserStatsDto;
     recent_matches: RecentProfileMatchDto[];
 }
 

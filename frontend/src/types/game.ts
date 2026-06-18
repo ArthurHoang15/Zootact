@@ -29,7 +29,8 @@ export type GameEndReason =
     | 'Agreement'
     | 'Abandonment';
 
-export type TimeControlPreset = 'Blitz' | 'Rapid' | 'Classical';
+export type TimeControlPreset = 'Blitz' | 'Rapid' | 'Classical' | 'Untimed';
+export type ClockMode = 'countdown' | 'countup';
 
 export type TerrainType = 'Normal' | 'River' | 'Trap' | 'Den';
 
@@ -51,6 +52,8 @@ export interface BoardDto {
 
 export interface TimeControlDto {
     preset: TimeControlPreset;
+    is_untimed: boolean;
+    clock_mode: ClockMode;
     initial_time_ms: number;
     increment_ms: number;
 }
@@ -270,8 +273,8 @@ export const TRAP_CELLS: PositionDto[] = [
 
 // Den cells
 export const DEN_CELLS: { position: PositionDto; owner: Player }[] = [
-    { position: { row: 0, col: 3 }, owner: 'Blue' },
-    { position: { row: 8, col: 3 }, owner: 'Red' },
+    { position: { row: 0, col: 3 }, owner: 'Red' },
+    { position: { row: 8, col: 3 }, owner: 'Blue' },
 ];
 
 // Helper functions

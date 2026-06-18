@@ -1,4 +1,4 @@
-{
+﻿{
     "common": {
         "loading": "Loading...",
         "error": "Something went wrong",
@@ -84,6 +84,7 @@
         "opponentReconnected": "Opponent reconnected!",
         "timeOut": "Time's up!",
         "smartReplay": "Smart Replay",
+        "smartReplayDisabled": "Smart Replay is unavailable in this deployment.",
         "moveHistory": "Move History"
     },
     "pieces": {
@@ -111,6 +112,133 @@
         "classical": "Classical (30 min)",
         "selectMode": "Select Time Mode"
     },
+    "lobby": {
+        "title": "Private Lobby",
+        "subtitle": "Invite one friend, wait in the room, then start when both are ready.",
+        "homeTitle": "Create a private room",
+        "homeSubtitle": "Create an untimed friendly room instantly, invite one friend, then start when both are ready.",
+        "modeLabel": "Match type",
+        "untimedMode": "Untimed Friendly",
+        "untimedModeHint": "No move timer limit. Each player clock counts up while it is their turn.",
+        "inviteTitle": "Invite your friend",
+        "inviteHint": "Share this link. If they are not logged in yet, they will sign in first and come back here automatically.",
+        "copyLink": "Copy Invite Link",
+        "copied": "Copied",
+        "copyFailed": "Failed to copy the invite link.",
+        "host": "Host",
+        "guest": "Guest",
+        "hostStatus": "Waiting for the second player",
+        "waitingGuest": "Waiting for a second player to join this room.",
+        "ready": "Ready",
+        "unready": "Not Ready",
+        "notReady": "Not ready",
+        "start": "Start",
+        "cancelStart": "Cancel",
+        "leave": "Leave Room",
+        "countdownLabel": "Match starts in",
+        "countdownHint": "Either player can cancel during this countdown.",
+        "hostHelp": "The host can only start after the guest has joined and is ready.",
+        "guestHelp": "You join as ready by default. Toggle your ready state if needed.",
+        "connectionError": "Could not connect to the live lobby service."
+    },
+    "status": {
+        "degradedTitle": "Server unavailable",
+        "degradedBody": "The server is temporarily unavailable. We will keep your session and retry automatically.",
+        "recoveringTitle": "Reconnecting",
+        "recoveringBody": "Trying to restore the server connection and rehydrate your session.",
+        "actionsDisabled": "Live actions are temporarily disabled while the app reconnects to the server."
+    },
+    "rules": {
+        "title": "Animal Chess Rules",
+        "subtitle": "This guide matches the exact rules currently enforced in Zootact.",
+        "pageTitle": "Rules",
+        "pageSubtitle": "Learn how Zootact Animal Chess works before you queue or challenge a friend.",
+        "pageBodyTitle": "Complete Rule Guide",
+        "pageBodySubtitle": "Shown in the selected app language and aligned with the current game implementation.",
+        "backToGame": "Back to Game",
+        "backToHome": "Back to Home",
+        "panelTitle": "Rules",
+        "panelSubtitle": "Quick access while you play.",
+        "panelBodyTitle": "Game Rules",
+        "panelBodySubtitle": "Expanded by default on desktop so you can check a rule without leaving the match.",
+        "mobileTitle": "Game Rules",
+        "mobileBodyTitle": "Quick Rules",
+        "mobileBodySubtitle": "Open the full Rules page if you want the complete guide outside the match.",
+        "modalTitle": "How to Play",
+        "modalBodyTitle": "Essential Rules",
+        "modalBodySubtitle": "Only the practical rules you need while playing. Open the full Rules page for the complete guide.",
+        "helpIconLabel": "Open rules",
+        "openModal": "Quick help",
+        "openFullPage": "Open Rules Page",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "quickPanelSubtitle": "The key rules you are most likely to need during a match.",
+        "quickPanel": {
+            "matrixSubtitle": "Fast lookup for normal-ground captures.",
+            "note": "Exceptions: Elephant cannot capture Rat. Rat captures Elephant only from land. River and land pieces cannot capture each other.",
+            "summary": {
+                "0": "Move 1 square up, down, left, or right.",
+                "1": "Enter the opponent's den to win immediately.",
+                "2": "Only Rat can enter river; Lion and Tiger may jump across it.",
+                "3": "Enemy traps drop that piece's rank to 0."
+            }
+        },
+        "homeEyebrow": "Need a refresher?",
+        "homeTitle": "Read the rules before you jump in",
+        "homeSubtitle": "See the exact movement, capture, river, trap, and draw rules used by the current game.",
+        "quickSummaryLabel": "Quick Summary",
+        "quickFacts": {
+            "0": "Move one square orthogonally. No diagonal moves.",
+            "1": "Entering the opponent's den wins immediately.",
+            "2": "Only the Rat can enter the river.",
+            "3": "A Rat on land cannot capture a Rat in the river, and a Rat in the river cannot capture a Rat on land.",
+            "4": "Draws happen by agreement, repetition, the 60 half-move rule, or stalemate."
+        },
+        "sections": {
+            "movement": {
+                "title": "Movement and Goal",
+                "bullets": {
+                    "0": "Every piece moves exactly one square up, down, left, or right.",
+                    "1": "A piece cannot stay in place, move off the board, or enter its own den.",
+                    "2": "Entering the opponent's den wins the game immediately.",
+                    "3": "You also win if the opponent has no remaining pieces, resigns, or runs out of time."
+                }
+            },
+            "river": {
+                "title": "River Rules",
+                "bullets": {
+                    "0": "Only the Rat can enter the river, move inside it, and leave it again.",
+                    "1": "All other pieces are blocked from river cells.",
+                    "2": "Lion and Tiger may jump across a full river lane in a straight line.",
+                    "3": "A Rat standing anywhere in that river path blocks the Lion or Tiger jump."
+                }
+            },
+            "capture": {
+                "title": "Capture, Rank, and Traps",
+                "bullets": {
+                    "0": "A piece can capture an enemy piece only if its effective rank is at least as high.",
+                    "1": "Elephant can never capture Rat.",
+                    "2": "Rat can capture Elephant only from land; a Rat in the river cannot do it.",
+                    "3": "Pieces in the river cannot capture pieces on land, and land pieces cannot capture pieces in the river, including Rat versus Rat across river and land.",
+                    "4": "A piece standing in the opponent's trap has its effective rank reduced to 0."
+                }
+            },
+            "endings": {
+                "title": "Draws and End Conditions",
+                "bullets": {
+                    "0": "A draw happens if both players agree, the same position repeats three times, or 60 half-moves pass without a capture.",
+                    "1": "If the current player has no legal moves, the game is a draw by stalemate.",
+                    "2": "Timeout, resignation, den capture, and capturing all enemy pieces all end the game immediately."
+                }
+            }
+        },
+        "captureMatrix": {
+            "title": "Which Pieces Can Capture Which",
+            "subtitle": "This list reflects the current rank logic used by the game on normal squares. Trap effects can lower the defender to rank 0.",
+            "compactSubtitle": "Each row shows the strongest piece this animal can legally capture on normal ground.",
+            "note": "Special cases: Elephant cannot capture Rat. Rat can capture Elephant only from land. A trapped enemy can be captured more easily because its effective rank becomes 0."
+        }
+    },
     "profile": {
         "subtitle": "View your account, track your performance, and update the basics of your profile.",
         "stats": "Statistics",
@@ -137,12 +265,16 @@
         "usernamePlaceholder": "Enter a new username",
         "usernameRequired": "Username cannot be empty.",
         "goHome": "Back to home",
+        "ratedStatsHint": "Rated match performance affects your Forest Points.",
+        "friendlyStatsTitle": "Friendly Match Stats",
+        "friendlyStatsHint": "Friendly matches are tracked in history but do not change your Elo.",
         "outcomeWin": "Win",
         "outcomeLoss": "Loss",
         "outcomeDraw": "Draw"
     },
     "analysis": {
         "bestMove": "Best Move",
+        "availableAfterGameEnds": "Analysis will be available after the game ends.",
         "excellent": "Excellent!",
         "good": "Good",
         "inaccuracy": "Inaccuracy",

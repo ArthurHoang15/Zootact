@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import type { PieceDto } from '@/types';
 import { PIECE_EMOJIS } from '@/types';
 
@@ -67,8 +68,10 @@ function PieceComponent({
   canSelect,
   onSelect 
 }: PieceProps) {
+  const { t } = useTranslation();
   const emoji = PIECE_EMOJIS[piece.type];
   const isBlue = piece.owner === 'Blue';
+  const pieceName = t(`pieces.${piece.type}`, piece.type);
   
   // Color styling based on owner
   const ownerStyles = isBlue
@@ -104,6 +107,7 @@ function PieceComponent({
         exit="exit"
         whileHover={canSelect && isMyPiece ? 'hover' : undefined}
         whileTap={canSelect && isMyPiece ? 'tap' : undefined}
+        title={pieceName}
         onClick={(e) => {
           if (canSelect && isMyPiece) {
             e.stopPropagation();
@@ -116,7 +120,7 @@ function PieceComponent({
         <span 
           className="text-2xl sm:text-3xl md:text-4xl filter drop-shadow-md"
           role="img"
-          aria-label={piece.type}
+          aria-label={pieceName}
         >
           {emoji}
         </span>

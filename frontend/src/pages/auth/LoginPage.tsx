@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { AuthLayout } from './AuthLayout';
 import { CuteInput, CuteButton } from '@/components/ui';
+import { routes } from '@/router/routes';
 import { useAuthStore } from '@/stores';
+import { navigateAfterAuth } from '@/utils';
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -22,8 +25,8 @@ export function LoginPage() {
     e.preventDefault();
     try {
       await loginWithEmail(email, password);
-      window.location.hash = '#/'; // Go to home
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
@@ -31,8 +34,8 @@ export function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
-      window.location.hash = '#/';
-    } catch (err) {
+      navigateAfterAuth();
+    } catch {
       // Error is set in store
     }
   };
@@ -45,7 +48,7 @@ export function LoginPage() {
     try {
        await sendLoginLink(email);
        setMagicLinkSent(true);
-    } catch(err) {
+    } catch {
        // Store handles error
     }
   };
@@ -75,9 +78,9 @@ export function LoginPage() {
             placeholder="••••••••"
           />
           <div className="flex justify-end mt-1">
-            <a href="#/forgot-password" className="text-xs text-sky-blue hover:underline font-bold">
+            <Link to={routes.forgotPassword} className="text-xs text-sky-blue hover:underline font-bold">
               {t('auth.forgotPassword', 'Forgot Password?')}
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -137,9 +140,9 @@ export function LoginPage() {
         <div className="text-center mt-4">
           <p className="text-sm text-forest-light">
             {t('auth.noAccount', "Don't have an account?")}{' '}
-            <a href="#/register" className="text-candy-green hover:underline font-bold">
+            <Link to={routes.register} className="text-candy-green hover:underline font-bold">
               {t('auth.registerLink', 'Join Now')}
-            </a>
+            </Link>
           </p>
         </div>
       </form>

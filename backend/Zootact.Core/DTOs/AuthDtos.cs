@@ -67,6 +67,9 @@ public record RecentProfileMatchDto
     [JsonPropertyName("match_id")]
     public required string MatchId { get; init; }
 
+    [JsonPropertyName("match_type")]
+    public required string MatchType { get; init; }
+
     [JsonPropertyName("time_control")]
     public required string TimeControl { get; init; }
 
@@ -99,6 +102,9 @@ public record MyProfileDto
 
     [JsonPropertyName("stats")]
     public required UserStatsDto Stats { get; init; }
+
+    [JsonPropertyName("friendly_stats")]
+    public required UserStatsDto FriendlyStats { get; init; }
 
     [JsonPropertyName("recent_matches")]
     public required IReadOnlyList<RecentProfileMatchDto> RecentMatches { get; init; }

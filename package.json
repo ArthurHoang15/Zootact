@@ -1,0 +1,22 @@
+{
+  "name": "zootact-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && bun install --frozen-lockfile && bun run build",
+    "dev:infra": "docker compose up -d",
+    "dev:backend": "dotnet watch run --project backend/Zootact.API",
+    "dev:frontend": "cd frontend && bun dev",
+    "dev:ai": "cd ai-service && uv run uvicorn app.main:app --reload --port 8001",
+    "dev:status": "bun run scripts/dev-status.ts",
+    "dev:down": "docker compose down",
+    "check:frontend": "cd frontend && bun run build",
+    "check:frontend:targeted": "cd frontend && bunx eslint src/App.tsx src/components/ui/BackendStatusBanner.tsx src/pages/GamePage.tsx src/pages/HomePage.tsx src/pages/LobbyPage.tsx src/pages/ProfilePage.tsx src/services/apiErrors.ts src/services/apiService.ts src/services/signalRService.ts src/stores/useAuthStore.ts",
+    "db:users": "bun run scripts/db-users.ts list",
+    "db:user:find": "bun run scripts/db-users.ts find",
+    "db:user:delete": "bun run scripts/db-users.ts delete"
+  },
+  "dependencies": {
+    "postgres": "^3.4.7"
+  }
+}

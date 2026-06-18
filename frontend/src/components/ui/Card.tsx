@@ -34,7 +34,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const motionProps = hover
+    const motionProps: Partial<HTMLMotionProps<'div'>> = hover
       ? {
           whileHover: { y: -4, boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)' },
           transition: { type: 'spring', stiffness: 400, damping: 17 },
@@ -51,7 +51,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           ${className}
         `}
         {...motionProps}
-        {...(props as any)}
+        {...props}
       >
         {children}
       </motion.div>

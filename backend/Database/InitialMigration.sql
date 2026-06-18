@@ -9,8 +9,8 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     firebase_uid VARCHAR(128) NOT NULL,  -- Firebase User UID (primary auth identifier)
     username VARCHAR(50) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    avatar_url VARCHAR(255),
+    email VARCHAR(512) NOT NULL,
+    avatar_url VARCHAR(2048),
     forest_points INTEGER NOT NULL DEFAULT 1200,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_login_at TIMESTAMPTZ,

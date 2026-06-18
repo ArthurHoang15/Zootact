@@ -14,11 +14,24 @@ namespace Zootact.API.Hubs;
 [Authorize]
 public sealed class GameHub(
     IGameStateRepository gameStateRepository,
+    IPrivateLobbyRepository privateLobbyRepository,
     IMatchLifecycleService matchLifecycleService,
     IMatchNotificationService matchNotificationService,
     GameEngine gameEngine,
     ILogger<GameHub> logger) : Hub
 {
+    public override async Task OnConnectedAsync()
+    {
+        var userId = GetUserId();
+        if (userId is not null)
+        {
+            await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
+            logger.LogInformation("User {UserId} connected to game hub with connection {ConnectionId}", userId, Context.ConnectionId);
+        }
+
+        await base.OnConnectedAsync();
+    }
+
     /// <summary>
     /// Joins a match room to receive real-time updates.
     /// </summary>
@@ -52,7 +65,8 @@ public sealed class GameHub(
         }
         
         // Add to SignalR group for the match
-        await Groups.AddToGroupAsync(Context.ConnectionId, matchId);
+        var canonicalMatchId = matchGuid.ToString();
+        await Groups.AddToGroupAsync(Context.ConnectionId, GameHubGroups.Match(canonicalMatchId));
         
         // Store connection mapping
         await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
@@ -77,13 +91,51 @@ public sealed class GameHub(
             ServerTimestamp = DateTimeOffset.UtcNow.ToString("O")
         };
 
-        await Clients.Group(matchId).SendAsync("OnTimeSync", timeSync);
+        await Clients.Group(GameHubGroups.Match(canonicalMatchId)).SendAsync("OnTimeSync", timeSync);
         
         // Notify opponent of reconnection if they were waiting
-        await Clients.OthersInGroup(matchId).SendAsync("OnOpponentReconnected");
+        await Clients.OthersInGroup(GameHubGroups.Match(canonicalMatchId)).SendAsync("OnOpponentReconnected");
         
-        logger.LogInformation("User {UserId} joined match {MatchId}", userId, matchId);
+        logger.LogInformation("User {UserId} joined match {MatchId}", userId, canonicalMatchId);
     }
+
+    public async Task JoinLobby(string lobbyId)
+    {
+        var userId = GetUserId();
+        if (userId is null)
+        {
+            await Clients.Caller.SendAsync("OnError", new { error = "Unauthorized", message = "User not authenticated." });
+            return;
+        }
+
+        if (!Guid.TryParse(lobbyId, out var lobbyGuid))
+        {
+            await Clients.Caller.SendAsync("OnError", new { error = "InvalidLobbyId", message = "Invalid lobby ID format." });
+            return;
+        }
+
+        var lobby = await privateLobbyRepository.GetLobbyAsync(lobbyGuid);
+        if (lobby is null)
+        {
+            await Clients.Caller.SendAsync("OnError", new { error = "LobbyNotFound", message = "Lobby not found." });
+            return;
+        }
+
+        if (!lobby.IsParticipant(userId.Value))
+        {
+            await Clients.Caller.SendAsync("OnError", new { error = "NotParticipant", message = "You are not a participant in this lobby." });
+            return;
+        }
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GameHubGroups.Lobby(lobbyGuid));
+        await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
+        logger.LogInformation("User {UserId} joined lobby {LobbyId}", userId, lobbyId);
+    }
+
+    public Task LeaveLobby(string lobbyId) =>
+        Guid.TryParse(lobbyId, out var lobbyGuid)
+            ? Groups.RemoveFromGroupAsync(Context.ConnectionId, GameHubGroups.Lobby(lobbyGuid))
+            : Task.CompletedTask;
     
     /// <summary>
     /// Submits a move in the current game.
@@ -165,7 +217,7 @@ public sealed class GameHub(
             MoveNumber = gameState.MoveCount
         };
         
-        await Clients.Group(matchId).SendAsync("OnMoveMade", moveMade);
+        await Clients.Group(GameHubGroups.Match(matchId)).SendAsync("OnMoveMade", moveMade);
         
         // Check if game ended
         if (result.GameCheck?.IsGameOver == true)
@@ -193,7 +245,7 @@ public sealed class GameHub(
         var username = Context.User?.Identity?.Name ?? "Unknown";
         
         // Notify opponent of draw offer
-        await Clients.OthersInGroup(matchId).SendAsync("OnDrawOffered", username);
+        await Clients.OthersInGroup(GameHubGroups.Match(matchId)).SendAsync("OnDrawOffered", username);
         
         logger.LogInformation("User {UserId} offered draw in match {MatchId}", userId, matchId);
     }
@@ -235,7 +287,7 @@ public sealed class GameHub(
         var matchId = activeMatchId.Value.ToString();
         
         // Notify opponent
-        await Clients.OthersInGroup(matchId).SendAsync("OnDrawDeclined");
+        await Clients.OthersInGroup(GameHubGroups.Match(matchId)).SendAsync("OnDrawDeclined");
     }
     
     /// <summary>
@@ -288,7 +340,7 @@ public sealed class GameHub(
             Timestamp = DateTimeOffset.UtcNow.ToString("O")
         };
         
-        await Clients.Group(matchId).SendAsync("OnChatReceived", chatMessage);
+        await Clients.Group(GameHubGroups.Match(matchId)).SendAsync("OnChatReceived", chatMessage);
     }
 
     public async Task ReportWindowFocus(bool isFocused)
@@ -336,12 +388,12 @@ public sealed class GameHub(
                 var matchId = activeMatchId.Value.ToString();
                 
                 // Notify opponent
-                await Clients.OthersInGroup(matchId).SendAsync("OnOpponentDisconnected", 60);
+                await Clients.OthersInGroup(GameHubGroups.Match(matchId)).SendAsync("OnOpponentDisconnected", 60);
                 
                 logger.LogInformation("User {UserId} disconnected from match {MatchId}", userId, matchId);
             }
             
-            await gameStateRepository.ClearPlayerConnectionAsync(userId.Value);
+            await gameStateRepository.ClearPlayerConnectionAsync(userId.Value, Context.ConnectionId);
         }
         
         await base.OnDisconnectedAsync(exception);

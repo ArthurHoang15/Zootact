@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Zootact.Core.GameLogic;
 using Zootact.Core.Interfaces;
@@ -38,14 +39,17 @@ public static class DependencyInjection
         
         // Repositories
         services.AddScoped<IGameStateRepository, RedisGameStateRepository>();
+        services.AddScoped<IPrivateLobbyRepository, RedisPrivateLobbyRepository>();
         services.AddScoped<IMatchLifecycleService, MatchLifecycleService>();
+        services.Configure<AiServiceOptions>(configuration.GetSection("AiService"));
         
         // Services (Firebase handles auth now, so no AuthService or EmailSender)
         services.AddScoped<IMatchmakingService, MatchmakingService>();
+        services.AddScoped<IPrivateLobbyService, PrivateLobbyService>();
         services.AddHttpClient<AiServiceClient>((sp, client) =>
         {
-            var baseUrl = configuration["AiService:BaseUrl"] ?? "http://localhost:8001";
-            client.BaseAddress = new Uri(baseUrl);
+            var options = sp.GetRequiredService<IOptions<AiServiceOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(15);
         });
         
@@ -53,6 +57,7 @@ public static class DependencyInjection
         services.AddHostedService<MatchPersistenceService>();
         services.AddHostedService<DisconnectTimerService>();
         services.AddHostedService<GameTimeoutService>();
+        services.AddHostedService<PrivateLobbyCountdownService>();
         
         return services;
     }

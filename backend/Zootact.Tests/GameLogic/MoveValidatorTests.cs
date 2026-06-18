@@ -160,7 +160,7 @@ public class MoveValidatorTests
         
         // Assert
         Assert.False(result.IsValid);
-        Assert.Equal("RatFromRiver", result.ErrorCode);
+        Assert.Equal("RiverLandCapture", result.ErrorCode);
     }
     
     [Fact]
@@ -180,6 +180,25 @@ public class MoveValidatorTests
         // Assert
         Assert.False(result.IsValid);
         Assert.Equal("ElephantVsRat", result.ErrorCode);
+    }
+
+    [Fact]
+    public void ValidateMove_RatInRiverCapturesRatOnLand_IsInvalid()
+    {
+        // Arrange
+        var board = new Board();
+        var riverRatPosition = new Position(3, 1);
+        var landRatPosition = new Position(3, 0);
+
+        board[riverRatPosition] = new Piece(PieceType.Rat, Player.Blue, riverRatPosition);
+        board[landRatPosition] = new Piece(PieceType.Rat, Player.Red, landRatPosition);
+
+        // Act
+        var result = _validator.ValidateMove(board, riverRatPosition, landRatPosition, Player.Blue);
+
+        // Assert
+        Assert.False(result.IsValid);
+        Assert.Equal("RiverLandCapture", result.ErrorCode);
     }
     
     #endregion

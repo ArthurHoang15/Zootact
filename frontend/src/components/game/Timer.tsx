@@ -16,6 +16,7 @@ export function Timer({ player, className = '' }: TimerProps) {
   const myColor = useGameStore(state => state.myColor);
   const isGameOver = useGameStore(state => state.isGameOver);
   const isOpponentDisconnected = useGameStore(state => state.isOpponentDisconnected);
+  const clockMode = useGameStore(state => state.clockMode);
   const tickTime = useGameStore(state => state.tickTime);
   
   const timeMs = player === 'me' ? myTimeMs : opponentTimeMs;
@@ -26,17 +27,19 @@ export function Timer({ player, className = '' }: TimerProps) {
   );
   
   // Timer tick logic
-  const lastTickRef = useRef<number>(Date.now());
+  const lastTickRef = useRef<number | null>(null);
   
   useEffect(() => {
     if (!isActive) {
       lastTickRef.current = Date.now();
       return;
     }
+
+    lastTickRef.current = Date.now();
     
     const interval = setInterval(() => {
       const now = Date.now();
-      const delta = now - lastTickRef.current;
+      const delta = now - (lastTickRef.current ?? now);
       lastTickRef.current = now;
       tickTime(delta);
     }, 100);
@@ -45,8 +48,9 @@ export function Timer({ player, className = '' }: TimerProps) {
   }, [isActive, tickTime]);
   
   // Determine styling based on time remaining
-  const isLowTime = timeMs < 30000;
-  const isCriticalTime = timeMs < 10000;
+  const isCountdown = clockMode === 'countdown';
+  const isLowTime = isCountdown && timeMs < 30000;
+  const isCriticalTime = isCountdown && timeMs < 10000;
   
   const bgStyle = isActive
     ? isCriticalTime 
@@ -73,7 +77,7 @@ export function Timer({ player, className = '' }: TimerProps) {
         repeat: Infinity,
       } : undefined}
     >
-      {formatGameTime(timeMs)}
+      {formatGameTime(timeMs, clockMode)}
     </motion.div>
   );
 }

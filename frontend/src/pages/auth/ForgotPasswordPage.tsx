@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { AuthLayout } from './AuthLayout';
 import { CuteInput, CuteButton } from '@/components/ui';
+import { routes } from '@/router/routes';
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -21,8 +27,8 @@ export function ForgotPasswordPage() {
     try {
       await sendPasswordResetEmail(auth, email);
       setMessage(t('auth.emailSentDesc', 'If an account exists, we sent a reset link!'));
-    } catch (err: any) {
-      setError(err.message || t('common.error'));
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, t('common.error')));
     } finally {
       setIsLoading(false);
     }
@@ -37,9 +43,9 @@ export function ForgotPasswordPage() {
         <div className="text-center py-8">
           <div className="text-4xl mb-4">📧</div>
           <p className="text-forest-dark font-medium mb-4">{message}</p>
-          <a href="#/login" className="text-candy-green font-bold hover:underline">
+          <Link to={routes.login} className="text-candy-green font-bold hover:underline">
             {t('auth.backToLogin', 'Back to Login')}
-          </a>
+          </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -72,9 +78,9 @@ export function ForgotPasswordPage() {
           </CuteButton>
 
           <div className="text-center mt-4">
-            <a href="#/login" className="text-sm text-forest-light hover:text-candy-green hover:underline font-bold">
+            <Link to={routes.login} className="text-sm text-forest-light hover:text-candy-green hover:underline font-bold">
               {t('auth.backToLogin', 'Back to Login')}
-            </a>
+            </Link>
           </div>
         </form>
       )}
