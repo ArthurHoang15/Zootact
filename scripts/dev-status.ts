@@ -26,7 +26,9 @@ function runDockerComposePs(): CheckResult {
       };
     }
 
-    const unhealthy = containerLines.filter(line => !/\b(running|healthy)\b/i.test(line));
+    const unhealthy = containerLines.filter(line =>
+      /\bunhealthy\b/i.test(line) || !/\b(running|healthy)\b/i.test(line)
+    );
 
     return {
       name: 'docker',

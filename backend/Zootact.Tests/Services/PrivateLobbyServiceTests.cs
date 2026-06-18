@@ -349,7 +349,7 @@ public sealed class PrivateLobbyServiceTests
         public Task<PlayerDisconnectInfo?> GetPlayerDisconnectInfoAsync(Guid matchId, Guid userId) => Task.FromResult<PlayerDisconnectInfo?>(null);
         public Task SetPlayerConnectionAsync(Guid userId, string connectionId) => Task.CompletedTask;
         public Task<string?> GetPlayerConnectionAsync(Guid userId) => Task.FromResult<string?>(null);
-        public Task ClearPlayerConnectionAsync(Guid userId) => Task.CompletedTask;
+        public Task ClearPlayerConnectionAsync(Guid userId, string connectionId) => Task.CompletedTask;
     }
 
     private sealed class FakeMatchmakingService(InMemoryGameStateRepository gameStateRepository) : IMatchmakingService

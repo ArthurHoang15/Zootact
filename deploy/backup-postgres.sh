@@ -12,10 +12,16 @@ mkdir -p "$BACKUP_DIR"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 output_file="$BACKUP_DIR/zootact-postgres-$timestamp.sql.gz"
+temp_file="$output_file.tmp.$$"
+trap 'rm -f "$temp_file"' EXIT
 
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
+if docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T postgres \
   sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' \
-  | gzip -9 > "$output_file"
+  | gzip -9 > "$temp_file"; then
+  mv "$temp_file" "$output_file"
+else
+  exit 1
+fi
 
 find "$BACKUP_DIR" -type f -name 'zootact-postgres-*.sql.gz' -mtime +"$RETENTION_DAYS" -delete
 

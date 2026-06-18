@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using System.Net;
 
 namespace Zootact.API.Services;
 
@@ -54,6 +55,9 @@ public static class RequestLoggingSanitizer
         return $"{key}={Uri.EscapeDataString("[redacted]")}";
     }
 
-    private static bool IsSensitiveKey(string key) =>
-        SensitiveKeys.Any(sensitiveKey => string.Equals(key, sensitiveKey, StringComparison.OrdinalIgnoreCase));
+    private static bool IsSensitiveKey(string key)
+    {
+        var decodedKey = WebUtility.UrlDecode(key);
+        return SensitiveKeys.Any(sensitiveKey => string.Equals(decodedKey, sensitiveKey, StringComparison.OrdinalIgnoreCase));
+    }
 }

@@ -91,8 +91,9 @@ public interface IGameStateRepository
     Task<string?> GetPlayerConnectionAsync(Guid userId);
     
     /// <summary>
-    /// Clears a player's SignalR connection ID.
+    /// Clears a player's SignalR connection ID if it matches the disconnected connection.
     /// </summary>
     /// <param name="userId">User ID.</param>
-    Task ClearPlayerConnectionAsync(Guid userId);
+    /// <param name="connectionId">Disconnected SignalR connection ID.</param>
+    Task ClearPlayerConnectionAsync(Guid userId, string connectionId);
 }

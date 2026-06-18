@@ -131,12 +131,14 @@ public class FirebaseAuthMiddleware
         {
             _logger.LogError(ex, "Database error while syncing Firebase user for path {Path}", context.Request.Path);
             await WriteErrorResponseAsync(context, "Authentication data sync unavailable", ex, StatusCodes.Status503ServiceUnavailable);
+            return;
         }
         catch (UnverifiedEmailRelinkException)
         {
             _logger.LogWarning("Rejected Firebase account relink attempt with unverified email for path {Path}", context.Request.Path);
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new { error = "Email must be verified before linking this account" });
+            return;
         }
 
         await _next(context);

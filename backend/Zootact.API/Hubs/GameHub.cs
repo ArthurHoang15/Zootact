@@ -393,7 +393,7 @@ public sealed class GameHub(
                 logger.LogInformation("User {UserId} disconnected from match {MatchId}", userId, matchId);
             }
             
-            await gameStateRepository.ClearPlayerConnectionAsync(userId.Value);
+            await gameStateRepository.ClearPlayerConnectionAsync(userId.Value, Context.ConnectionId);
         }
         
         await base.OnDisconnectedAsync(exception);

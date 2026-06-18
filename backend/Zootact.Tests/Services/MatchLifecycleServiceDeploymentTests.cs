@@ -77,7 +77,7 @@ public sealed class MatchLifecycleServiceDeploymentTests
     private sealed class InMemoryGameStateRepository : Zootact.Core.Interfaces.IGameStateRepository
     {
         public Task ClearPlayerActiveMatchAsync(Guid userId) => Task.CompletedTask;
-        public Task ClearPlayerConnectionAsync(Guid userId) => Task.CompletedTask;
+        public Task ClearPlayerConnectionAsync(Guid userId, string connectionId) => Task.CompletedTask;
         public Task ClearPlayerDisconnectedAsync(Guid matchId, Guid userId) => Task.CompletedTask;
         public Task DeleteGameStateAsync(Guid matchId) => Task.CompletedTask;
         public Task<GameState?> GetGameStateAsync(Guid matchId) => Task.FromResult<GameState?>(null);

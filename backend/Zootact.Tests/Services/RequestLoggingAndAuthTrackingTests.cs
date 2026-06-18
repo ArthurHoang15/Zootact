@@ -18,6 +18,18 @@ public sealed class RequestLoggingAndAuthTrackingTests
     }
 
     [Fact]
+    public void SanitizeRequestPath_RedactsUrlEncodedSensitiveKeys()
+    {
+        var request = new DefaultHttpContext().Request;
+        request.Path = "/game-hub";
+        request.QueryString = new QueryString("?access%5Ftoken=secret-token&foo=bar");
+
+        var sanitized = RequestLoggingSanitizer.SanitizeRequestPath(request);
+
+        Assert.Equal("/game-hub?access%5Ftoken=%5Bredacted%5D&foo=bar", sanitized);
+    }
+
+    [Fact]
     public void ShouldUpdateLastLogin_ReturnsTrueForBootstrapRouteWhenOutsideThrottleWindow()
     {
         var shouldUpdate = LastLoginTracker.ShouldUpdate(
