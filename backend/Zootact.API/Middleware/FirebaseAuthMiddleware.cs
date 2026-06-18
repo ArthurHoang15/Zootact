@@ -41,7 +41,9 @@ public class FirebaseAuthMiddleware
         {
             // Extract Firebase ID token from Authorization header
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
-            var queryToken = context.Request.Query["access_token"].FirstOrDefault();
+            var queryToken = IsSignalRHandshakePath(context.Request.Path)
+                ? context.Request.Query["access_token"].FirstOrDefault()
+                : null;
             var token = !string.IsNullOrWhiteSpace(authHeader) && authHeader.StartsWith("Bearer ")
                 ? authHeader["Bearer ".Length..].Trim()
                 : queryToken;
@@ -124,7 +126,6 @@ public class FirebaseAuthMiddleware
             var identity = new System.Security.Claims.ClaimsIdentity(claims, "Firebase");
             context.User = new System.Security.Claims.ClaimsPrincipal(identity);
 
-            await _next(context);
         }
         catch (DbUpdateException ex)
         {
@@ -137,11 +138,8 @@ public class FirebaseAuthMiddleware
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new { error = "Email must be verified before linking this account" });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in Firebase auth middleware");
-            await WriteErrorResponseAsync(context, "Authentication service error", ex, StatusCodes.Status500InternalServerError);
-        }
+
+        await _next(context);
     }
 
     private async Task SaveUserChangesAsync(HttpContext context, ZootactDbContext dbContext)
@@ -331,6 +329,9 @@ public class FirebaseAuthMiddleware
 
         return publicPaths.Any(p => path.StartsWith(p));
     }
+
+    private static bool IsSignalRHandshakePath(PathString path) =>
+        path.StartsWithSegments("/game-hub", StringComparison.OrdinalIgnoreCase);
 
     private static async Task<string> GenerateUniqueUsernameAsync(
         ZootactDbContext dbContext,

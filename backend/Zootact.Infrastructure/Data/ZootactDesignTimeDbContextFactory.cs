@@ -8,7 +8,7 @@ public sealed class ZootactDesignTimeDbContextFactory : IDesignTimeDbContextFact
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__PostgreSQL")
             ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
-            ?? "Host=localhost;Port=5432;Database=zootact;Username=postgres;Password=postgres";
+            ?? throw new InvalidOperationException("Set ConnectionStrings__PostgreSQL or POSTGRES_CONNECTION_STRING before creating a design-time DbContext.");
 
         var optionsBuilder = new DbContextOptionsBuilder<ZootactDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

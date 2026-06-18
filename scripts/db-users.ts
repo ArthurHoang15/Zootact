@@ -129,12 +129,30 @@ function normalizeConnectionString(connectionString: string): string {
   const database = values.get("database") ?? values.get("initial catalog") ?? "";
   const username = values.get("username") ?? values.get("user id") ?? values.get("userid") ?? "postgres";
   const password = values.get("password") ?? "";
+  const consumedKeys = new Set([
+    "host",
+    "port",
+    "database",
+    "initial catalog",
+    "username",
+    "user id",
+    "userid",
+    "password",
+  ]);
 
   const auth = password
     ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}`
     : encodeURIComponent(username);
 
-  return `postgresql://${auth}@${host}:${port}/${database}`;
+  const extraParams = new URLSearchParams();
+  for (const [key, value] of values) {
+    if (!consumedKeys.has(key)) {
+      extraParams.set(key, value);
+    }
+  }
+
+  const query = extraParams.toString();
+  return `postgresql://${auth}@${host}:${port}/${database}${query ? `?${query}` : ""}`;
 }
 
 async function listUsers(

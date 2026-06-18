@@ -268,10 +268,14 @@ class SignalRService {
             this.setConnectionState('connected');
             gameStore.setConnected(true);
             if (this.currentMatchId) {
-                void this.joinMatch(this.currentMatchId);
+                void this.joinMatch(this.currentMatchId).catch(error => {
+                    console.error('Failed to rejoin match after reconnect', error);
+                });
             }
             if (this.currentLobbyId) {
-                void this.joinLobby(this.currentLobbyId);
+                void this.joinLobby(this.currentLobbyId).catch(error => {
+                    console.error('Failed to rejoin lobby after reconnect', error);
+                });
             }
         });
 

@@ -15,11 +15,25 @@ function runDockerComposePs(): CheckResult {
       stdio: ['ignore', 'pipe', 'pipe'],
       encoding: 'utf8',
     }).trim();
+    const lines = output.split(/\r?\n/).filter(Boolean);
+    const containerLines = lines.slice(1);
+
+    if (containerLines.length === 0) {
+      return {
+        name: 'docker',
+        state: 'degraded',
+        detail: 'docker compose returned no containers',
+      };
+    }
+
+    const unhealthy = containerLines.filter(line => !/\b(running|healthy)\b/i.test(line));
 
     return {
       name: 'docker',
-      state: 'healthy',
-      detail: output || 'docker compose returned no containers',
+      state: unhealthy.length === 0 ? 'healthy' : 'unhealthy',
+      detail: unhealthy.length === 0
+        ? output
+        : `containers not running or healthy: ${unhealthy.join(' | ')}`,
     };
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'docker compose ps failed';
@@ -32,9 +46,15 @@ function runDockerComposePs(): CheckResult {
 }
 
 async function getJson(url: string): Promise<{ ok: boolean; status: number; body: string }> {
-  const response = await fetch(url);
-  const body = await response.text();
-  return { ok: response.ok, status: response.status, body };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    const body = await response.text();
+    return { ok: response.ok, status: response.status, body };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function runHttpCheck(name: string, url: string, optional = false): Promise<CheckResult> {

@@ -65,7 +65,7 @@ public sealed class SignalRPrivateLobbyNotificationService(
                 AvatarUrl = hostUser.AvatarUrl,
                 ForestPoints = hostUser.ForestPoints,
                 IsHost = true,
-                IsReady = false
+                IsReady = lobby.HostReady
             },
             Guest = guestUser is null ? null : new LobbyPlayerDto
             {

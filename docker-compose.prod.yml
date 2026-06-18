@@ -32,6 +32,7 @@ services:
       Firebase__ServiceAccountJsonBase64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64}
       AiService__Enabled: ${AI_SERVICE_ENABLED:-false}
       AiService__BaseUrl: ${AI_SERVICE_BASE_URL:-http://ai-service:8001}
+      ForwardedHeaders__KnownProxies__0: ${CADDY_INTERNAL_IP:-172.18.0.2}
       Logging__EnableFileSink: "false"
     expose:
       - "8080"

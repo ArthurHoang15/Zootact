@@ -37,7 +37,8 @@ export function EmailLinkPage() {
       }
     }
 
-    if (location.search.includes('apiKey') && location.search.includes('oobCode')) {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.has('apiKey') && searchParams.has('oobCode')) {
       void completeSignIn();
       return () => {
         cancelled = true;

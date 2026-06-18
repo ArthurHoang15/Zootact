@@ -10,7 +10,8 @@ namespace Zootact.API.Services;
 public sealed class SignalRMatchNotificationService(
     IHubContext<GameHub> hubContext,
     IGameStateRepository gameStateRepository,
-    ZootactDbContext dbContext) : IMatchNotificationService
+    ZootactDbContext dbContext,
+    ILogger<SignalRMatchNotificationService> logger) : IMatchNotificationService
 {
     public async Task SendMatchStartedAsync(GameState gameState)
     {
@@ -21,7 +22,7 @@ public sealed class SignalRMatchNotificationService(
 
         if (blueConnection is not null)
         {
-            await hubContext.Clients.Client(blueConnection).SendAsync("OnMatchStart", new MatchStartDto
+            await SendMatchStartAsync(blueConnection, gameState.BluePlayerId, new MatchStartDto
             {
                 MatchId = gameState.MatchId.ToString(),
                 Opponent = new OpponentDto
@@ -46,7 +47,7 @@ public sealed class SignalRMatchNotificationService(
 
         if (redConnection is not null)
         {
-            await hubContext.Clients.Client(redConnection).SendAsync("OnMatchStart", new MatchStartDto
+            await SendMatchStartAsync(redConnection, gameState.RedPlayerId, new MatchStartDto
             {
                 MatchId = gameState.MatchId.ToString(),
                 Opponent = new OpponentDto
@@ -67,6 +68,18 @@ public sealed class SignalRMatchNotificationService(
                 },
                 InitialBoard = ConvertBoardToDto(gameState.Board)
             });
+        }
+    }
+
+    private async Task SendMatchStartAsync(string connectionId, Guid playerId, MatchStartDto dto)
+    {
+        try
+        {
+            await hubContext.Clients.Client(connectionId).SendAsync("OnMatchStart", dto);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send match start notification to player {PlayerId}", playerId);
         }
     }
 

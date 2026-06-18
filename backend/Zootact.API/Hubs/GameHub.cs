@@ -65,7 +65,8 @@ public sealed class GameHub(
         }
         
         // Add to SignalR group for the match
-        await Groups.AddToGroupAsync(Context.ConnectionId, GameHubGroups.Match(matchId));
+        var canonicalMatchId = matchGuid.ToString();
+        await Groups.AddToGroupAsync(Context.ConnectionId, GameHubGroups.Match(canonicalMatchId));
         
         // Store connection mapping
         await gameStateRepository.SetPlayerConnectionAsync(userId.Value, Context.ConnectionId);
@@ -90,12 +91,12 @@ public sealed class GameHub(
             ServerTimestamp = DateTimeOffset.UtcNow.ToString("O")
         };
 
-        await Clients.Group(GameHubGroups.Match(matchId)).SendAsync("OnTimeSync", timeSync);
+        await Clients.Group(GameHubGroups.Match(canonicalMatchId)).SendAsync("OnTimeSync", timeSync);
         
         // Notify opponent of reconnection if they were waiting
-        await Clients.OthersInGroup(GameHubGroups.Match(matchId)).SendAsync("OnOpponentReconnected");
+        await Clients.OthersInGroup(GameHubGroups.Match(canonicalMatchId)).SendAsync("OnOpponentReconnected");
         
-        logger.LogInformation("User {UserId} joined match {MatchId}", userId, matchId);
+        logger.LogInformation("User {UserId} joined match {MatchId}", userId, canonicalMatchId);
     }
 
     public async Task JoinLobby(string lobbyId)
@@ -132,7 +133,9 @@ public sealed class GameHub(
     }
 
     public Task LeaveLobby(string lobbyId) =>
-        Groups.RemoveFromGroupAsync(Context.ConnectionId, GameHubGroups.Lobby(lobbyId));
+        Guid.TryParse(lobbyId, out var lobbyGuid)
+            ? Groups.RemoveFromGroupAsync(Context.ConnectionId, GameHubGroups.Lobby(lobbyGuid))
+            : Task.CompletedTask;
     
     /// <summary>
     /// Submits a move in the current game.

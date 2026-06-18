@@ -27,7 +27,12 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function parsePathRoute(pathname: string): RouteInfo {
     if (pathname.startsWith('/lobby/')) {
-        const lobbyId = decodeURIComponent(pathname.slice('/lobby/'.length));
+        let lobbyId: string;
+        try {
+            lobbyId = decodeURIComponent(pathname.slice('/lobby/'.length));
+        } catch {
+            lobbyId = '';
+        }
         return { name: 'lobby', lobbyId };
     }
 

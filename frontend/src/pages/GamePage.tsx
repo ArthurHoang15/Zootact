@@ -248,7 +248,7 @@ export function GamePage() {
                         {!aiAnalysisEnabled && (
                             <p className="mt-2 text-sm text-forest-light">{t('game.smartReplayDisabled')}</p>
                         )}
-                        {aiAnalysisEnabled && !isGameOver && <p className="mt-2 text-sm text-forest-light">{t('game.waiting')}</p>}
+                        {aiAnalysisEnabled && !isGameOver && <p className="mt-2 text-sm text-forest-light">{t('analysis.availableAfterGameEnds')}</p>}
                         {aiAnalysisEnabled && isGameOver && analysisStatus === 'Pending' && (
                             <p className="mt-2 text-sm text-forest-light">{t('common.loading')}</p>
                         )}

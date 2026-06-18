@@ -1,4 +1,4 @@
-export type ApiErrorKind = 'unauthorized' | 'unavailable' | 'request';
+export type ApiErrorKind = 'unauthorized' | 'forbidden' | 'unavailable' | 'request';
 
 interface ApiErrorPayload {
   error?: string;
@@ -33,8 +33,12 @@ export function isBackendUnavailableError(error: unknown): boolean {
 }
 
 function classifyStatus(status: number): ApiErrorKind {
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     return 'unauthorized';
+  }
+
+  if (status === 403) {
+    return 'forbidden';
   }
 
   if (status === 500 || status === 502 || status === 503 || status === 504) {

@@ -255,22 +255,29 @@ public class AuthController(
             .Include(u => u.Stats)
             .FirstAsync(u => u.Id == userId);
 
-        var completedMatches = await dbContext.Matches
-            .Include(m => m.BluePlayer)
-            .Include(m => m.RedPlayer)
+        var completedMatchesQuery = dbContext.Matches
             .Where(m =>
                 m.Status == "Completed" &&
                 (m.BluePlayerId == dbUser.Id || m.RedPlayerId == dbUser.Id))
-            .OrderByDescending(m => m.EndedAt ?? m.StartedAt)
+            .OrderByDescending(m => m.EndedAt ?? m.StartedAt);
+
+        var recentMatches = await completedMatchesQuery
+            .Include(m => m.BluePlayer)
+            .Include(m => m.RedPlayer)
+            .Take(5)
             .ToListAsync();
 
-        var recentMatches = completedMatches
-            .Take(5)
-            .ToList();
+        var friendlyMatchRows = await completedMatchesQuery
+            .Where(match => match.TimeControl.StartsWith("Friendly:"))
+            .Select(match => new
+            {
+                match.WinnerId,
+                match.StartedAt,
+                match.EndedAt
+            })
+            .ToListAsync();
 
-        var friendlyMatches = completedMatches
-            .Where(match => MatchTypeMetadata.Parse(match.TimeControl) == MatchMode.Friendly)
-            .OrderBy(m => m.EndedAt ?? m.StartedAt)
+        var friendlyMatches = friendlyMatchRows
             .Select(match => (
                 Won: match.WinnerId == dbUser.Id,
                 Draw: match.WinnerId == null,

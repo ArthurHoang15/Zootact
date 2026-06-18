@@ -39,9 +39,10 @@ export const useLobbyStore = create<LobbyState & LobbyActions>()(
         setLoading: isLoading => set({ isLoading }),
         setError: error => set({ error, isLoading: false }),
         applyLobbyUpdate: lobby => {
-            const currentRole = get().lobby?.current_user_role;
+            const currentLobby = get().lobby;
+            const currentRole = currentLobby?.current_user_role;
             const nextRole: LobbyRole =
-                lobby.current_user_role === 'Unknown' && currentRole
+                lobby.current_user_role === 'Unknown' && currentRole && currentLobby?.lobby_id === lobby.lobby_id
                     ? currentRole
                     : lobby.current_user_role;
 
@@ -69,7 +70,7 @@ export const useLobbyStore = create<LobbyState & LobbyActions>()(
         setLobbyClosed: event =>
             set(state => ({
                 lobby: state.lobby?.lobby_id === event.lobby_id ? null : state.lobby,
-                closedReason: event.reason,
+                closedReason: state.lobby?.lobby_id === event.lobby_id ? event.reason : state.closedReason,
                 isLoading: false,
             })),
         clearLobby: () => set(initialState),

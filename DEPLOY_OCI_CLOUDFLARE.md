@@ -60,7 +60,7 @@ Enable a minimal firewall:
 ```bash
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
-sudo ufw allow 22/tcp
+sudo ufw allow from <trusted_ip_or_cidr> to any port 22
 sudo ufw --force enable
 ```
 
@@ -158,7 +158,7 @@ Verify these flows after both sides deploy:
 Run a manual backup from the repo directory on the VM:
 
 ```bash
-sh deploy/backup-postgres.sh
+bash deploy/backup-postgres.sh
 ```
 
 Add a daily cron job:
@@ -168,7 +168,7 @@ crontab -e
 ```
 
 ```cron
-15 2 * * * cd /opt/zootact/app && BACKUP_DIR=/opt/zootact/backups/postgres sh deploy/backup-postgres.sh >> /opt/zootact/backups/postgres/backup.log 2>&1
+15 2 * * * cd /opt/zootact/app && BACKUP_DIR=/opt/zootact/backups/postgres bash deploy/backup-postgres.sh >> /opt/zootact/backups/postgres/backup.log 2>&1
 ```
 
 Restore into a clean database only after stopping the backend:

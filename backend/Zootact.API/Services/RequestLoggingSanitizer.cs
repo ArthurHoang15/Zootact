@@ -4,6 +4,22 @@ namespace Zootact.API.Services;
 
 public static class RequestLoggingSanitizer
 {
+    private static readonly string[] SensitiveKeys =
+    [
+        "access_token",
+        "token",
+        "id_token",
+        "refresh_token",
+        "authorization",
+        "password",
+        "passwd",
+        "secret",
+        "client_secret",
+        "api_key",
+        "apikey",
+        "key"
+    ];
+
     public static string SanitizeRequestPath(HttpRequest request)
     {
         var path = string.Concat(request.PathBase.Value, request.Path.Value);
@@ -39,5 +55,5 @@ public static class RequestLoggingSanitizer
     }
 
     private static bool IsSensitiveKey(string key) =>
-        string.Equals(key, "access_token", StringComparison.OrdinalIgnoreCase);
+        SensitiveKeys.Any(sensitiveKey => string.Equals(key, sensitiveKey, StringComparison.OrdinalIgnoreCase));
 }

@@ -3,7 +3,11 @@ import { buildLobbyPath, routes } from './routes';
 function normalizeLegacyPath(pathname: string): string {
     if (pathname.startsWith('/lobby/')) {
         const lobbyId = pathname.slice('/lobby/'.length);
-        return buildLobbyPath(decodeURIComponent(lobbyId));
+        try {
+            return buildLobbyPath(decodeURIComponent(lobbyId));
+        } catch {
+            return routes.home;
+        }
     }
 
     switch (pathname) {

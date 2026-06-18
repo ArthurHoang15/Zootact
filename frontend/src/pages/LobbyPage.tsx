@@ -101,6 +101,9 @@ export function LobbyPage({ lobbyId }: LobbyPageProps) {
 
         return () => {
             cancelled = true;
+            void signalRService.leaveLobby(lobbyId).catch(error => {
+                console.warn('Failed to leave lobby group during cleanup', error);
+            });
         };
     }, [backendStatus, firebaseToken, lobbyId, markBackendDegraded, setError, setLoading, setLobby, t]);
 

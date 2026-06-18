@@ -301,10 +301,20 @@ export function RulesModal({ open, onClose, onOpenPage }: RulesModalProps) {
                 className="absolute inset-0"
                 onClick={onClose}
             />
-            <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] bg-cream p-4 shadow-cute-lg sm:p-6">
+            <div
+                className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] bg-cream p-4 shadow-cute-lg sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                tabIndex={-1}
+                onKeyDown={event => {
+                    if (event.key === 'Escape') {
+                        onClose();
+                    }
+                }}
+            >
                 <div className="flex items-center justify-between gap-3">
                     <h2 className="font-display text-2xl text-forest-dark sm:text-3xl">{t('rules.modalTitle')}</h2>
-                    <CuteButton size="sm" variant="ghost" onClick={onClose}>
+                    <CuteButton size="sm" variant="ghost" onClick={onClose} autoFocus>
                         {t('common.close')}
                     </CuteButton>
                 </div>

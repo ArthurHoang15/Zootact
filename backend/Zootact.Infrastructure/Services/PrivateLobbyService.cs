@@ -38,7 +38,7 @@ public sealed class PrivateLobbyService(
         }
 
         var lobby = await privateLobbyRepository.GetLobbyAsync(lobbyId.Value);
-        if (lobby is not null)
+        if (lobby?.IsParticipant(userId) == true)
         {
             return lobby;
         }
@@ -250,7 +250,7 @@ public sealed class PrivateLobbyService(
             return null;
         }
 
-        if (lobby.CountdownEndAt.Value > DateTimeOffset.UtcNow)
+        if (lobby.CountdownEndAt.Value.ToUnixTimeMilliseconds() > DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
         {
             return null;
         }

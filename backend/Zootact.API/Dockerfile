@@ -19,4 +19,8 @@ EXPOSE 8080
 
 COPY --from=build /app/publish .
 
+RUN groupadd --system zootact \
+    && useradd --system --gid zootact --no-create-home --shell /usr/sbin/nologin zootact
+USER zootact
+
 ENTRYPOINT ["dotnet", "Zootact.API.dll"]

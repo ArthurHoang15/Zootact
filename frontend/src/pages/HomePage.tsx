@@ -85,9 +85,9 @@ export function HomePage() {
                 const activeMatch = await apiService.getActiveMatch();
                 if (activeMatch) {
                     hydrateActiveMatch(activeMatch);
+                    setQueueState({ searching: false, timeControl: null, position: null });
+                    navigate(routes.game);
                 }
-                setQueueState({ searching: false, timeControl: null, position: null });
-                navigate(routes.game);
                 return;
             }
 
@@ -98,6 +98,7 @@ export function HomePage() {
             });
         } catch (error) {
             if (isBackendUnavailableError(error)) {
+                setQueueState({ searching: false, timeControl: null, position: null });
                 markBackendDegraded(getErrorMessage(error, t('status.degradedBody')));
                 return;
             }

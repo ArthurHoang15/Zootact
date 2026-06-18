@@ -163,6 +163,11 @@ public sealed class MatchmakingService(
     /// <inheritdoc />
     public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControlPreset preset, MatchMode matchMode = MatchMode.Rated)
     {
+        if (preset == TimeControlPreset.Untimed && matchMode == MatchMode.Rated)
+        {
+            throw new InvalidOperationException("Untimed matches must be friendly.");
+        }
+
         return await CreateMatchAsync(
             bluePlayerId,
             redPlayerId,
@@ -173,6 +178,16 @@ public sealed class MatchmakingService(
     /// <inheritdoc />
     public async Task<Guid> CreateMatchAsync(Guid bluePlayerId, Guid redPlayerId, TimeControl timeControl, string storedTimeControl)
     {
+        if (storedTimeControl != MatchTypeMetadata.EncodeTimeControl(timeControl, MatchTypeMetadata.Parse(storedTimeControl)))
+        {
+            throw new InvalidOperationException("Stored time control does not match the runtime time control.");
+        }
+
+        if (timeControl.Preset == TimeControlPreset.Untimed && MatchTypeMetadata.Parse(storedTimeControl) == MatchMode.Rated)
+        {
+            throw new InvalidOperationException("Untimed matches must be stored as friendly.");
+        }
+
         var blueUser = await dbContext.Users.FindAsync(bluePlayerId);
         var redUser = await dbContext.Users.FindAsync(redPlayerId);
 

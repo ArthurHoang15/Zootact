@@ -1,4 +1,5 @@
 using System.Runtime.Loader;
+using System.Net;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -65,8 +66,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
+    foreach (var proxy in builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [])
+    {
+        if (IPAddress.TryParse(proxy, out var address))
+        {
+            options.KnownProxies.Add(address);
+        }
+    }
 });
 
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -141,7 +147,7 @@ static async Task ApplyDatabaseMigrationsAsync(WebApplication app)
 {
     await using var scope = app.Services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ZootactDbContext>();
-    var migrationIds = dbContext.Database.GetMigrations().ToArray();
+    var migrationIds = new[] { "20260418060050_InitialSchema" };
 
     await EfMigrationBootstrapper.EnsureLegacyMigrationBaselineAsync(dbContext.Database, migrationIds);
     await dbContext.Database.MigrateAsync();

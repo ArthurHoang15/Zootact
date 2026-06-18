@@ -89,7 +89,7 @@ public sealed class HealthStatusService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Database readiness check threw an exception.");
-            return new DependencyStatusResponse("postgres", false, ex.Message);
+            return new DependencyStatusResponse("postgres", false, "Dependency check failed");
         }
     }
 
@@ -104,7 +104,7 @@ public sealed class HealthStatusService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Redis readiness check threw an exception.");
-            return new DependencyStatusResponse("redis", false, ex.Message);
+            return new DependencyStatusResponse("redis", false, "Dependency check failed");
         }
     }
 
@@ -134,7 +134,7 @@ public sealed class HealthStatusService(
         catch (Exception ex)
         {
             logger.LogInformation(ex, "AI dependency health check failed.");
-            return new DependencyStatusResponse("ai-service", false, ex.Message);
+            return new DependencyStatusResponse("ai-service", false, "Dependency check failed");
         }
     }
 }

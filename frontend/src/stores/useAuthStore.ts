@@ -285,7 +285,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
                                 set(state => ({
                                     user: state.user,
                                     firebaseToken: token,
-                                    isAuthenticated: true,
+                                    isAuthenticated: Boolean(state.user),
                                     isLoading: false,
                                     authBootstrapComplete: true,
                                     backendStatus: 'degraded',
